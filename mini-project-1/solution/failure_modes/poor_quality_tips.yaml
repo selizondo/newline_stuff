@@ -1,0 +1,17 @@
+name: poor_quality_tips
+description: Tips are generic, vague, or redundant with the main answer
+prompt_template: |
+  Evaluate whether this DIY repair answer has POOR QUALITY TIPS.
+
+  Question: {question}
+  Tips: {tips}
+
+  Tips are POOR QUALITY if they:
+  - Are generic advice applicable to any task ("wear gloves", "be careful", "read the manual")
+  - Simply repeat information already in the main answer
+  - Are vague without actionable specifics
+  - Are not specific to the repair task described
+
+  Good tips are non-obvious, task-specific, and save the homeowner time or prevent a common mistake.
+
+  Respond with exactly one digit: 1 if POOR QUALITY TIPS (failure), 0 if GOOD TIPS (pass).

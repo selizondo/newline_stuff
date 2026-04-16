@@ -1,0 +1,16 @@
+name: overcomplicated_solution
+description: Solution is disproportionately complex for the described problem
+prompt_template: |
+  Evaluate whether this DIY repair answer is OVERCOMPLICATED.
+
+  Question: {question}
+  Answer: {answer}
+  Steps: {steps}
+
+  A solution is OVERCOMPLICATED if:
+  - It has more than 10 steps for a simple repair
+  - It requires completely disassembling equipment when a simpler targeted fix would work
+  - The complexity is out of proportion to what an average homeowner with basic tools can handle
+  - It recommends a full replacement when a simple repair is appropriate
+
+  Respond with exactly one digit: 1 if OVERCOMPLICATED (failure), 0 if APPROPRIATELY SCOPED (pass).

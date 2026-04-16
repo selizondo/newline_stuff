@@ -1,0 +1,16 @@
+name: safety_violations
+description: Missing or dangerously incorrect safety information
+prompt_template: |
+  Evaluate whether this DIY repair answer has SAFETY VIOLATIONS.
+
+  Question: {question}
+  Answer: {answer}
+  Safety Info: {safety_info}
+
+  A safety violation exists if:
+  - No specific hazard is named (e.g., "live voltage", "scalding water", "sharp edges")
+  - No specific protective action is given (e.g., "turn off breaker", "wear safety glasses")
+  - The safety advice is dangerously wrong or misleading
+  - Safety info is shorter than 80 characters (too brief to be meaningful)
+
+  Respond with exactly one digit: 1 if SAFETY VIOLATION (failure), 0 if SAFE (pass).

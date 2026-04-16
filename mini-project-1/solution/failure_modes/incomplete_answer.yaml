@@ -1,0 +1,16 @@
+name: incomplete_answer
+description: Answer lacks sufficient detail to actually perform the repair
+prompt_template: |
+  Evaluate whether this DIY repair answer is INCOMPLETE.
+
+  Question: {question}
+  Answer: {answer}
+  Steps: {steps}
+
+  An answer is INCOMPLETE if it:
+  - Has fewer than 3 concrete steps
+  - Uses vague language like "check it", "look for issues", "repeat as needed" without specifics
+  - Omits the root cause of the problem
+  - Leaves the homeowner unable to complete the repair from the information given
+
+  Respond with exactly one digit: 1 if INCOMPLETE (failure), 0 if COMPLETE (pass).

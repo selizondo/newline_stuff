@@ -1,0 +1,16 @@
+name: missing_context
+description: Answer lacks important situational context the homeowner needs
+prompt_template: |
+  Evaluate whether this DIY repair answer is MISSING CONTEXT.
+
+  Question: {question}
+  Answer: {answer}
+  Equipment Problem: {equipment_problem}
+
+  Context is MISSING if the answer:
+  - Doesn't address the specific equipment or problem type mentioned in the question
+  - Assumes knowledge the homeowner may not have without explaining it
+  - Doesn't mention when to call a professional instead of DIY-ing
+  - Lacks information about how to identify the problem before starting the repair
+
+  Respond with exactly one digit: 1 if MISSING CONTEXT (failure), 0 if SUFFICIENT CONTEXT (pass).
