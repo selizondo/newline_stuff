@@ -1,0 +1,112 @@
+category: appliance_repair
+
+# ─────────────────────────────────────────────────────────────
+# Strategy 1: Zero-shot — minimal instructions, no examples
+# ─────────────────────────────────────────────────────────────
+zero_shot:
+  system: >-
+    You are an expert appliance repair technician with 15 years of experience
+    helping homeowners fix common household appliances.
+  user: |
+    Generate a realistic home appliance repair Q&A pair covering a common problem a homeowner might face.
+
+    Return ONLY a valid JSON object with exactly these keys:
+    {
+      "question": "<specific DIY repair question, 10-500 chars>",
+      "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
+      "equipment_problem": "<concise problem description, 5-200 chars>",
+      "tools_required": ["<tool 1>", "<tool 2>", ...],
+      "steps": ["<step 1>", "<step 2>", "<step 3>", ...],
+      "safety_info": "<specific hazard + precaution, minimum 80 chars>",
+      "tips": ["<non-obvious, task-specific tip that saves time or prevents damage>"]
+    }
+
+    Rules:
+    - tools_required: list of homeowner-accessible tools costing <$50 each
+    - steps: at least 3 ordered steps
+    - Do NOT wrap JSON in markdown code fences.
+
+# ─────────────────────────────────────────────────────────────
+# Strategy 2: Few-shot — detailed instructions + one example
+# ─────────────────────────────────────────────────────────────
+few_shot:
+  system: >-
+    You are a master appliance repair technician with 20 years of field experience.
+    You write detailed, complete repair guides that leave nothing ambiguous.
+    Your answers always explain the root cause, the full fix, and how to avoid
+    the problem in future.
+  user: |
+    Generate a complete, detailed home appliance repair Q&A pair.
+
+    Here is an example of a high-quality output:
+    {
+      "question": "Why does my washing machine shake violently during the spin cycle?",
+      "answer": "Violent shaking during the spin cycle is almost always caused by an unbalanced load or worn shock absorbers. When clothes clump on one side of the drum, the centrifugal force creates a wobble that amplifies at high spin speeds. Start by redistributing the load manually and running a short spin — this resolves the problem in most cases. If shaking continues with a balanced load, the shock absorber rods that connect the tub to the cabinet frame are worn and need replacing. Unplug the machine, remove the back panel, and locate the two or four rods. Press the retaining clips to release each one, fit new OEM absorbers until the clips engage, then reassemble and run a test cycle. The machine should spin silently.",
+      "equipment_problem": "Washing machine vibrates excessively during spin cycle",
+      "tools_required": ["Phillips screwdriver", "putty knife", "replacement shock absorbers"],
+      "steps": [
+        "Redistribute the load evenly inside the drum and run a short test spin",
+        "Unplug the washing machine from the wall outlet",
+        "Remove the back panel using a Phillips screwdriver",
+        "Press the retaining clips and pull each shock absorber rod free",
+        "Press new OEM shock absorbers into place until the clips engage audibly",
+        "Replace the panel, restore power, and run a full spin cycle to verify"
+      ],
+      "safety_info": "Always unplug the machine before opening any panel — the motor capacitor can hold a charge for several minutes after power is cut. Wait at least 3 minutes before touching internal components to avoid electric shock.",
+      "tips": [
+        "Buy OEM shock absorbers matched to your exact model number — generic replacements often have the wrong stroke length and fail within weeks",
+        "While the panel is off, spin the drum by hand and listen for bearing roughness — replacing the bearing at the same time avoids a second full disassembly later"
+      ]
+    }
+
+    Now generate a NEW and DIFFERENT appliance repair Q&A pair at the same quality level.
+
+    Return ONLY a valid JSON object with exactly these keys:
+    {
+      "question": "<specific DIY repair question, 10-500 chars>",
+      "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+      "equipment_problem": "<concise problem description, 5-200 chars>",
+      "tools_required": ["<tool 1>", "<tool 2>", ...],
+      "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", ...],
+      "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+      "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+    }
+
+    Rules:
+    - tools_required: homeowner-accessible tools, each costing <$50
+    - steps: at least 4 ordered, specific, actionable steps
+    - Do NOT wrap JSON in markdown code fences.
+
+# ─────────────────────────────────────────────────────────────
+# Strategy 3: Chain-of-thought — explicit reasoning before output
+# ─────────────────────────────────────────────────────────────
+chain_of_thought:
+  system: >-
+    You are a master appliance repair technician with 20 years of field experience.
+    Before writing any repair guide, you reason systematically through the problem:
+    root cause, required tools, safety hazards, and the professional insight most
+    homeowners miss. Your final output reflects that careful thinking.
+  user: |
+    Generate a complete, detailed home appliance repair Q&A pair using this reasoning process:
+
+    Think through each of these before writing your answer:
+    1. What specific appliance problem will this cover, and what is its root cause?
+    2. What tools does this repair actually require? Only include tools under $50 available at hardware stores.
+    3. What is the exact safety hazard — name the specific risk (voltage, pressure, temperature) and the precise protective action?
+    4. What is one non-obvious professional tip that most homeowners would not think of?
+    5. What are the ordered steps a homeowner must follow, with no vague verbs?
+
+    After reasoning through the above, return ONLY a valid JSON object — do not include your reasoning in the output:
+    {
+      "question": "<specific DIY repair question, 10-500 chars>",
+      "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+      "equipment_problem": "<concise problem description, 5-200 chars>",
+      "tools_required": ["<tool 1>", "<tool 2>", ...],
+      "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", ...],
+      "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+      "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+    }
+
+    Rules:
+    - steps: at least 4 ordered, specific, actionable steps (no vague verbs like 'check' or 'look')
+    - Do NOT wrap JSON in markdown code fences.

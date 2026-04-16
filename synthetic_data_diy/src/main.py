@@ -2,13 +2,20 @@
 Main CLI orchestrator for the Home DIY Repair Q&A Synthetic Data Pipeline.
 
 Usage:
-  python main.py                        # Full pipeline (all 7 phases), 50 samples
-  python main.py --samples 100          # Custom sample count
-  python main.py --phase 1-5           # Stop after analysis
-  python main.py --phase 6             # Correction phase only
-  python main.py --phase 7             # Benchmark phase only
-  python main.py --corrected           # Use corrected prompts in Phase 1
-  python main.py stats                 # Print summary from existing output files
+  python main.py                                       # Full pipeline, zero_shot, 50 samples
+  python main.py --samples 20 --prompt-strategy few_shot --batch-label few-shot-run1
+  python main.py --prompt-strategy chain_of_thought --batch-label cot-run1
+  python main.py --phase 1 --samples 10              # Phase 1 only
+  python main.py --phase 1-5                          # Stop after analysis
+  python main.py --debug                              # Write JSON instead of JSONL
+  python main.py stats                                # Print summary from existing output files
+
+Prompt strategies:
+  zero_shot        Minimal instructions, no examples (default)
+  few_shot         Detailed instructions + one worked example per category
+  chain_of_thought Explicit reasoning steps before generating output
+
+Output is written to output/<batch-label>/ so every run is isolated.
 """
 
 import argparse
@@ -72,46 +79,47 @@ def main() -> None:
     parser.add_argument("--samples", type=int, default=50, help="Q&A pairs to generate (default: 50)")
     parser.add_argument("--model", type=str, default=None, help="LLM model override (default: from .env)")
     parser.add_argument("--phase", type=str, default="1-7", help="Phase range to run, e.g. '1-5', '6', '7' (default: 1-7)")
-    parser.add_argument("--prompts-dir", type=str, default=None,
-                        help="Path to prompt templates directory (default: prompts/baseline)")
-    parser.add_argument("--corrected", action="store_true",
-                        help="Shorthand for --prompts-dir prompts/corrected")
+    parser.add_argument("--prompt-strategy", type=str, default="zero_shot",
+                        choices=["zero_shot", "few_shot", "chain_of_thought"],
+                        help="Prompt strategy for Phase 1 (default: zero_shot)")
+    parser.add_argument("--batch-label", type=str, default=None,
+                        help="Human-readable label for this run, used as output subdirectory name. "
+                             "Defaults to '<strategy>-<timestamp>'.")
     parser.add_argument("--output-dir", type=str, default="output", help="Base output directory (default: output)")
+    parser.add_argument("--debug", action="store_true", help="Write output as pretty-printed JSON instead of JSONL")
 
     args = parser.parse_args()
 
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    corrected_dir = output_dir / "corrected"
+    base_output = Path(args.output_dir)
 
     if args.command == "stats":
-        quick_stats(output_dir)
+        quick_stats(base_output)
         return
 
     # Resolve model from CLI or config
     from config import get_settings
-    from prompts import BASELINE_DIR, CORRECTED_DIR
     settings = get_settings()
     model = args.model or settings.model
 
-    # Resolve prompts directory: explicit > --corrected shorthand > default baseline
-    if args.prompts_dir:
-        prompts_dir = Path(args.prompts_dir)
-    elif args.corrected:
-        prompts_dir = CORRECTED_DIR
-    else:
-        prompts_dir = BASELINE_DIR
+    strategy = args.prompt_strategy
+    batch_label = args.batch_label or f"{strategy}-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    # Each run gets its own subdirectory so runs never overwrite each other
+    output_dir = base_output / batch_label
+    output_dir.mkdir(parents=True, exist_ok=True)
+    corrected_dir = output_dir / "corrected"
 
     phase_start, phase_end = _parse_phase_range(args.phase)
 
     _banner("HOME DIY REPAIR Q&A SYNTHETIC DATA PIPELINE")
-    print(f"Timestamp  : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"Model      : {model}")
-    print(f"LLM base   : {settings.base_url}")
-    print(f"Samples    : {args.samples}")
-    print(f"Phases     : {phase_start}–{phase_end}")
-    print(f"Prompts    : {prompts_dir}")
-    print(f"Output dir : {output_dir.absolute()}")
+    print(f"Timestamp       : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Model           : {model}")
+    print(f"LLM base        : {settings.base_url}")
+    print(f"Samples         : {args.samples}")
+    print(f"Phases          : {phase_start}–{phase_end}")
+    print(f"Prompt strategy : {strategy}")
+    print(f"Batch label     : {batch_label}")
+    print(f"Output dir      : {output_dir.absolute()}")
 
     generation_results = None
     valid_results = None
@@ -124,7 +132,9 @@ def main() -> None:
             num_samples=args.samples,
             model=model,
             output_dir=output_dir,
-            prompts_dir=prompts_dir,
+            strategy=strategy,
+            batch_label=batch_label,
+            debug=args.debug,
         )
 
     # ── Phase 2: Structural Validation ───────────────────────────────────

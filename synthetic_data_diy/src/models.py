@@ -50,6 +50,9 @@ class QAPair(BaseModel):
 class GenerationResult(BaseModel):
     trace_id: str
     category: str
+    batch_id: str = ""                     # UUID shared by all records in one pipeline run
+    batch_label: str = ""                  # human-readable run label (e.g. "zero-shot-run1")
+    prompt_strategy: str = ""              # zero_shot | few_shot | chain_of_thought
     raw_response: str = ""
     raw_dict: Optional[dict] = None        # parsed JSON from LLM; None if parsing failed
     parse_error: Optional[str] = None      # set when the LLM response could not be parsed as JSON

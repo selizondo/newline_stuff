@@ -14,13 +14,16 @@ from instructor.exceptions import InstructorRetryException
 from config import get_settings
 from llm_client import instructor_complete
 from models import QAPair, GenerationResult
-from prompts import BASELINE_DIR, load_prompt_templates
+from prompts import load_prompt_templates
 
 
 class DIYDatasetGenerator:
-    def __init__(self, model: str, prompts_dir: Path):
+    def __init__(self, model: str, strategy: str, batch_id: str, batch_label: str):
         self.model = model
-        self.templates = load_prompt_templates(prompts_dir)
+        self.strategy = strategy
+        self.batch_id = batch_id
+        self.batch_label = batch_label
+        self.templates = load_prompt_templates(strategy)
         self.settings = get_settings()
 
     def generate_single(self, template: dict) -> GenerationResult:
@@ -40,6 +43,9 @@ class DIYDatasetGenerator:
             return GenerationResult(
                 trace_id=trace_id,
                 category=template["category"],
+                batch_id=self.batch_id,
+                batch_label=self.batch_label,
+                prompt_strategy=self.strategy,
                 raw_response=qa.model_dump_json(),
                 raw_dict=qa.model_dump(),
             )
@@ -47,6 +53,9 @@ class DIYDatasetGenerator:
             return GenerationResult(
                 trace_id=trace_id,
                 category=template["category"],
+                batch_id=self.batch_id,
+                batch_label=self.batch_label,
+                prompt_strategy=self.strategy,
                 raw_response=str(e.last_completion),
                 parse_error=str(e),
                 validation_errors=e.validation_errors,
@@ -56,6 +65,9 @@ class DIYDatasetGenerator:
             return GenerationResult(
                 trace_id=trace_id,
                 category=template["category"],
+                batch_id=self.batch_id,
+                batch_label=self.batch_label,
+                prompt_strategy=self.strategy,
                 raw_response="",
                 parse_error=str(e),
             )
@@ -100,17 +112,32 @@ def run_generation_phase(
     num_samples: int,
     model: str,
     output_dir: Path,
-    prompts_dir: Path = BASELINE_DIR,
+    strategy: str = "zero_shot",
+    batch_label: str = "",
+    debug: bool = False,
 ) -> list[GenerationResult]:
-    generator = DIYDatasetGenerator(model=model, prompts_dir=prompts_dir)
+    batch_id = str(uuid.uuid4())
+
+    generator = DIYDatasetGenerator(
+        model=model,
+        strategy=strategy,
+        batch_id=batch_id,
+        batch_label=batch_label,
+    )
     results = generator.generate_batch(num_samples)
 
     parsed = sum(1 for r in results if r.parse_error is None)
     print(f"\nGeneration complete: {parsed}/{len(results)} parsed ({parsed/len(results)*100:.1f}%)")
 
-    out_file = output_dir / "generation_results.jsonl"
-    out_file.write_text(
-        "\n".join(json.dumps(r.model_dump(), ensure_ascii=False) for r in results) + "\n"
-    )
+    if debug:
+        out_file = output_dir / "generation_results.json"
+        out_file.write_text(
+            json.dumps([r.model_dump() for r in results], indent=2, ensure_ascii=False)
+        )
+    else:
+        out_file = output_dir / "generation_results.jsonl"
+        out_file.write_text(
+            "\n".join(json.dumps(r.model_dump(), ensure_ascii=False) for r in results) + "\n"
+        )
     print(f"Saved → {out_file}")
     return results

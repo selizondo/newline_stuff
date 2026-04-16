@@ -1,47 +1,82 @@
 """
 Prompt template loader.
 
-Templates are stored as YAML files in subdirectories of prompts/:
-  prompts/baseline/   — one .yaml file per repair category
-  prompts/corrected/  — improved prompts targeting common failure modes
-  prompts/<trial>/    — any future trial directory
+Templates are stored as YAML files directly in prompts/:
+  prompts/appliance_repair.yaml
+  prompts/electrical_repair.yaml
+  ...
 
-Each YAML file must have three keys:
-  category : repair domain label (e.g. "appliance_repair")
-  system   : LLM system message
-  user     : user-turn instruction including the JSON output schema
+Each YAML file contains a top-level `category` key plus one key per strategy:
+
+  category: appliance_repair
+
+  zero_shot:
+    system: "..."
+    user:   "..."
+
+  few_shot:
+    system: "..."
+    user:   "..."   # includes a worked example
+
+  chain_of_thought:
+    system: "..."
+    user:   "..."   # includes explicit reasoning steps
+
+Pass a strategy name to load_prompt_templates() to select which version to use.
 """
 
 from pathlib import Path
 
 import yaml
 
-DEFAULT_PROMPTS_DIR = Path(__file__).parent / "prompts"
-BASELINE_DIR = DEFAULT_PROMPTS_DIR / "baseline"
-CORRECTED_DIR = DEFAULT_PROMPTS_DIR / "corrected"
+PROMPTS_DIR = Path(__file__).parent / "prompts"
+
+STRATEGIES = ("zero_shot", "few_shot", "chain_of_thought")
 
 
-def load_prompt_templates(prompts_dir: Path) -> list[dict]:
-    """Load all prompt templates from .yaml files in prompts_dir.
+def load_prompt_templates(strategy: str = "zero_shot") -> list[dict]:
+    """Load all prompt templates from prompts/ for the given strategy.
 
-    Files are loaded in alphabetical order for determinism.
-    Raises FileNotFoundError if the directory or its YAML files are missing.
-    Raises ValueError if a file is missing required keys.
+    Args:
+        strategy: One of 'zero_shot', 'few_shot', or 'chain_of_thought'.
+
+    Returns:
+        List of dicts with keys: category, system, user.
+
+    Raises:
+        ValueError: If strategy is not recognised.
+        FileNotFoundError: If the prompts directory or YAML files are missing.
+        ValueError: If a YAML file is missing required keys.
     """
-    if not prompts_dir.exists():
-        raise FileNotFoundError(f"Prompts directory not found: {prompts_dir}")
+    if strategy not in STRATEGIES:
+        raise ValueError(f"Unknown strategy '{strategy}'. Must be one of: {STRATEGIES}")
 
-    yaml_files = sorted(prompts_dir.glob("*.yaml"))
+    if not PROMPTS_DIR.exists():
+        raise FileNotFoundError(f"Prompts directory not found: {PROMPTS_DIR}")
+
+    yaml_files = sorted(PROMPTS_DIR.glob("*.yaml"))
     if not yaml_files:
-        raise FileNotFoundError(f"No .yaml files found in {prompts_dir}")
+        raise FileNotFoundError(f"No .yaml files found in {PROMPTS_DIR}")
 
     templates: list[dict] = []
     for path in yaml_files:
         with path.open() as f:
             data = yaml.safe_load(f)
-        missing = [k for k in ("category", "system", "user") if k not in data]
+
+        if "category" not in data:
+            raise ValueError(f"{path.name} is missing 'category' key")
+        if strategy not in data:
+            raise ValueError(f"{path.name} is missing strategy '{strategy}'")
+
+        block = data[strategy]
+        missing = [k for k in ("system", "user") if k not in block]
         if missing:
-            raise ValueError(f"{path.name} is missing required keys: {missing}")
-        templates.append({"category": data["category"], "system": data["system"], "user": data["user"]})
+            raise ValueError(f"{path.name}[{strategy}] is missing keys: {missing}")
+
+        templates.append({
+            "category": data["category"],
+            "system": block["system"],
+            "user": block["user"],
+        })
 
     return templates

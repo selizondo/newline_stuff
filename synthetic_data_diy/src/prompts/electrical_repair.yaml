@@ -1,0 +1,111 @@
+category: electrical_repair
+
+# ─────────────────────────────────────────────────────────────
+# Strategy 1: Zero-shot — minimal instructions, no examples
+# ─────────────────────────────────────────────────────────────
+zero_shot:
+  system: >-
+    You are a licensed electrician with expertise in home electrical systems.
+    Always emphasize safety first.
+  user: |
+    Generate a realistic home electrical repair Q&A pair covering a common problem a homeowner might face.
+
+    Return ONLY a valid JSON object with exactly these keys:
+    {
+      "question": "<specific DIY repair question, 10-500 chars>",
+      "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
+      "equipment_problem": "<concise problem description, 5-200 chars>",
+      "tools_required": ["<tool 1>", "<tool 2>", ...],
+      "steps": ["<step 1>", "<step 2>", "<step 3>", ...],
+      "safety_info": "<specific hazard + precaution, minimum 80 chars>",
+      "tips": ["<non-obvious, task-specific tip that saves time or prevents damage>"]
+    }
+
+    Rules:
+    - tools_required: list of homeowner-accessible tools costing <$50 each
+    - steps: at least 3 ordered steps
+    - Do NOT wrap JSON in markdown code fences.
+
+# ─────────────────────────────────────────────────────────────
+# Strategy 2: Few-shot — detailed instructions + one example
+# ─────────────────────────────────────────────────────────────
+few_shot:
+  system: >-
+    You are a licensed master electrician who writes precise, safe repair guides.
+    You never skip safety steps and always name the specific voltage or amperage
+    hazard involved. Your guides explain cause, fix, and prevention in full detail.
+  user: |
+    Generate a complete, detailed home electrical repair Q&A pair.
+
+    Here is an example of a high-quality output:
+    {
+      "question": "How do I replace a standard wall outlet that sparks when I plug something in?",
+      "answer": "Sparking when plugging in a device usually indicates a worn outlet where the internal contacts have loosened over years of use, causing arcing as the prongs make intermittent contact. This is a fire risk and the outlet should be replaced promptly. Begin by turning off the circuit breaker that controls the outlet and verifying it is dead with a non-contact voltage tester — do not rely on the breaker label alone. Unscrew the cover plate and pull the outlet from the box. Note which wires connect to which terminals: black to brass, white to silver, bare copper to green. Disconnect each wire, connect them to the new outlet in the same positions, push the outlet back into the box, and restore power to test.",
+      "equipment_problem": "Wall outlet sparks when devices are plugged in",
+      "tools_required": ["flathead screwdriver", "Phillips screwdriver", "non-contact voltage tester", "replacement outlet"],
+      "steps": [
+        "Turn off the circuit breaker controlling the outlet",
+        "Verify the outlet is dead using a non-contact voltage tester on both slots",
+        "Remove the cover plate screw and unscrew the outlet from the electrical box",
+        "Photograph the existing wire connections before disconnecting anything",
+        "Disconnect wires from old outlet and connect to new: black to brass, white to silver, bare to green",
+        "Push outlet into box, secure with screws, replace cover plate, restore power and test"
+      ],
+      "safety_info": "Live 120V household current can cause fatal electrocution. Turn off the breaker AND verify zero voltage with a non-contact tester before touching any wire — breaker labels are often wrong after home renovations.",
+      "tips": [
+        "Use a tamper-resistant (TR) outlet as the replacement — they are code-required in new construction and the internal shutters prevent children from inserting objects",
+        "If the wires in the box are aluminum rather than copper (dull grey, not shiny orange), stop and call an electrician — aluminum wiring requires special outlets and anti-oxidant paste"
+      ]
+    }
+
+    Now generate a NEW and DIFFERENT electrical repair Q&A pair at the same quality level.
+
+    Return ONLY a valid JSON object with exactly these keys:
+    {
+      "question": "<specific DIY repair question, 10-500 chars>",
+      "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+      "equipment_problem": "<concise problem description, 5-200 chars>",
+      "tools_required": ["<tool 1>", "<tool 2>", ...],
+      "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", ...],
+      "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+      "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+    }
+
+    Rules:
+    - tools_required: homeowner-accessible tools, each costing <$50
+    - steps: at least 4 ordered, specific, actionable steps
+    - Do NOT wrap JSON in markdown code fences.
+
+# ─────────────────────────────────────────────────────────────
+# Strategy 3: Chain-of-thought — explicit reasoning before output
+# ─────────────────────────────────────────────────────────────
+chain_of_thought:
+  system: >-
+    You are a licensed master electrician who writes precise, safe repair guides.
+    Before writing any repair guide, you reason carefully through the problem:
+    the electrical root cause, exactly which tools are needed, the specific
+    voltage or current hazard, and the professional insight most homeowners miss.
+  user: |
+    Generate a complete, detailed home electrical repair Q&A pair using this reasoning process:
+
+    Think through each of these before writing your answer:
+    1. What specific electrical problem will this cover, and what is its root cause?
+    2. What tools does this repair actually require? Only include tools under $50 available at hardware stores.
+    3. What is the exact electrical hazard — name the specific voltage/amperage risk and the precise protective action a homeowner must take?
+    4. What is one non-obvious professional tip that most homeowners would not think of?
+    5. What are the ordered steps, written with specific action verbs (not 'check' or 'look')?
+
+    After reasoning through the above, return ONLY a valid JSON object — do not include your reasoning in the output:
+    {
+      "question": "<specific DIY repair question, 10-500 chars>",
+      "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+      "equipment_problem": "<concise problem description, 5-200 chars>",
+      "tools_required": ["<tool 1>", "<tool 2>", ...],
+      "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", ...],
+      "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+      "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+    }
+
+    Rules:
+    - steps: at least 4 ordered, specific, actionable steps (no vague verbs like 'check' or 'look')
+    - Do NOT wrap JSON in markdown code fences.

@@ -229,6 +229,53 @@ class FailureAnalyzer:
         )
 
 
+def plot_strategy_comparison(
+    strategy_dirs: dict[str, Path],
+    save_path: Path,
+) -> None:
+    """Visualization 7: quality pass rate per strategy, per dimension.
+
+    Args:
+        strategy_dirs: mapping of strategy label → output directory containing quality_eval_data.csv
+        save_path: where to write the PNG
+    """
+    strategy_rates: dict[str, list[float]] = {}
+    for label, d in strategy_dirs.items():
+        csv = d / "quality_eval_data.csv"
+        if not csv.exists():
+            print(f"  [strategy comparison] skipping '{label}' — quality_eval_data.csv not found")
+            continue
+        df = pd.read_csv(csv)
+        strategy_rates[label] = [float(df[dim].mean()) if dim in df.columns else 0.0 for dim in QUALITY_DIM_NAMES]
+
+    if not strategy_rates:
+        print("  [strategy comparison] no data found, skipping chart")
+        return
+
+    labels = list(strategy_rates.keys())
+    n_strategies = len(labels)
+    n_dims = len(QUALITY_DIM_NAMES)
+    x = range(n_dims)
+    width = 0.8 / n_strategies
+    colours = ["#3498db", "#2ecc71", "#e67e22", "#9b59b6", "#e74c3c"]
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    for i, label in enumerate(labels):
+        offsets = [xi + (i - n_strategies / 2 + 0.5) * width for xi in x]
+        ax.bar(offsets, strategy_rates[label], width=width, label=label, color=colours[i % len(colours)])
+
+    ax.set_title("Quality Pass Rate by Prompt Strategy", fontsize=13)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels([n.replace("_", " ").title() for n in QUALITY_DIM_NAMES], rotation=30, ha="right")
+    ax.set_ylabel("Pass Rate")
+    ax.set_ylim(0, 1.05)
+    ax.legend(title="Strategy", bbox_to_anchor=(1.01, 1), loc="upper left")
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    plt.close()
+    print(f"  Saved → {save_path}")
+
+
 def run_analysis_phase(
     output_dir: Path,
     corrected_dir: Path | None = None,
