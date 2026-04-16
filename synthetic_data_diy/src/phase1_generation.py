@@ -96,16 +96,25 @@ class DIYDatasetGenerator:
 
 
 def load_generation_results(output_dir: Path) -> list[GenerationResult]:
-    """Load Phase 1 output from disk for use by downstream phases."""
-    results_file = output_dir / "generation_results.jsonl"
-    if not results_file.exists():
-        raise FileNotFoundError(f"Not found: {results_file}. Run Phase 1 first.")
+    """Load Phase 1 output from disk for use by downstream phases.
 
-    return [
-        GenerationResult(**json.loads(line))
-        for line in results_file.read_text().splitlines()
-        if line.strip()
-    ]
+    Accepts both generation_results.jsonl (standard) and generation_results.json (debug).
+    """
+    jsonl_file = output_dir / "generation_results.jsonl"
+    json_file = output_dir / "generation_results.json"
+
+    if jsonl_file.exists():
+        return [
+            GenerationResult(**json.loads(line))
+            for line in jsonl_file.read_text().splitlines()
+            if line.strip()
+        ]
+    elif json_file.exists():
+        return [GenerationResult(**r) for r in json.loads(json_file.read_text())]
+    else:
+        raise FileNotFoundError(
+            f"Not found: {jsonl_file} or {json_file}. Run Phase 1 first."
+        )
 
 
 def run_generation_phase(

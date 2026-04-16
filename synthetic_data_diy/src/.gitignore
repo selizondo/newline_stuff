@@ -8,3 +8,6 @@ output/
 *.png
 venv/
 .venv/
+.DS_Store
+debug*
+**/CLAUDE.md

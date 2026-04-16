@@ -62,10 +62,12 @@ def instructor_complete(
                 max_retries=3,
             )
         except InstructorRetryException as e:
+            # .errors() is a tenacity method in some versions, a property or absent in others
+            _errors = e.errors() if callable(getattr(e, "errors", None)) else getattr(e, "errors", None)
             print(f"\n  [validation failed] {e.n_attempts} attempt(s), model={model}")
-            print(f"  errors: {e.errors()}")
+            print(f"  errors: {_errors}")
             print(f"  last response: {e.last_completion}")
-            e.validation_errors = e.errors()
+            e.validation_errors = _errors
             e.validation_attempts = e.n_attempts
             raise
         except RateLimitError:
