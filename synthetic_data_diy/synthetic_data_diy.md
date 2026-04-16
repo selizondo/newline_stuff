@@ -53,7 +53,8 @@ Each phase should be independently runnable and produce output that feeds the ne
 
 ## Benchmark Dataset
 
-You are provided with a **benchmark dataset** available on Hugging Face: [dipenbhuva/home-diy-repair-qa](https://huggingface.co/datasets/dipenbhuva/home-diy-repair-qa). This dataset contains **5,000 high-quality DIY repair Q\&A items** produced and curated by the course instructors.
+You are provided with a **benchmark dataset** available on Hugging Face: [dipenbhuva/home-diy-repair-qa](http
+s://huggingface.co/datasets/dipenbhuva/home-diy-repair-qa). This dataset contains **5,000 high-quality DIY repair Q\&A items** produced and curated by the course instructors.
 
 **Purpose**: This dataset serves as your quality benchmark. Your generated data will be evaluated **against this reference**, not in isolation. The benchmark defines what "good enough" looks like, and your pipeline must demonstrate that its output approaches or matches this level of quality.
 
