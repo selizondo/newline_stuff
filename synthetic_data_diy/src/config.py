@@ -16,14 +16,14 @@ class Settings:
     base_url: str
     api_key: str
     model: str
-    rate_limit_delay: float = 0.5  # seconds between LLM calls
+    rate_limit_delay: float = 2.0  # seconds between LLM calls
 
 
 def get_settings() -> Settings:
     base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
     api_key = os.getenv("LLM_API_KEY", "")
     model = os.getenv("LLM_MODEL", "gpt-4o-mini")
-    rate_limit_delay = float(os.getenv("LLM_RATE_LIMIT_DELAY", "0.5"))
+    rate_limit_delay = float(os.getenv("LLM_RATE_LIMIT_DELAY", "2.0"))
 
     if not api_key:
         raise ValueError(

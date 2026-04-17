@@ -18,6 +18,14 @@ T = TypeVar("T", bound=BaseModel)
 _client: OpenAI | None = None
 _instructor_client: instructor.Instructor | None = None
 
+# Defaults shared by instructor_complete and chat_complete
+_DEFAULT_TEMPERATURE: float = 0.7
+_DEFAULT_MAX_TOKENS: int = 1500
+_DEFAULT_MAX_RETRIES: int = 4
+_DEFAULT_BACKOFF_DELAY: float = 2.0   # initial RateLimitError retry delay in seconds
+_BACKOFF_MULTIPLIER: float = 2.0      # multiplier applied each retry
+_INSTRUCTOR_INTERNAL_RETRIES: int = 3  # Instructor-level validation retries
+
 
 def get_client(settings: Settings | None = None) -> OpenAI:
     """Return a cached OpenAI-compatible client."""
@@ -32,8 +40,7 @@ def get_instructor_client(settings: Settings | None = None) -> instructor.Instru
     """Return a cached Instructor-patched OpenAI client for structured outputs."""
     global _instructor_client
     if _instructor_client is None:
-        s = settings or get_settings()
-        _instructor_client = instructor.from_openai(OpenAI(base_url=s.base_url, api_key=s.api_key))
+        _instructor_client = instructor.from_openai(get_client(settings))
     return _instructor_client
 
 
@@ -41,26 +48,30 @@ def instructor_complete(
     messages: list[dict],
     response_model: Type[T],
     model: str,
-    temperature: float = 0.7,
-    max_tokens: int = 1500,
-    max_retries: int = 4,
+    temperature: float = _DEFAULT_TEMPERATURE,
+    max_tokens: int = _DEFAULT_MAX_TOKENS,
+    max_retries: int = _DEFAULT_MAX_RETRIES,
 ) -> T:
     """Use Instructor to generate a structured Pydantic object from an LLM.
 
-    Retries on 429 RateLimitError with exponential backoff (2s, 4s, 8s, 16s).
+    Sleeps rate_limit_delay seconds after each successful call.
+    Retries on 429 RateLimitError with exponential backoff (_DEFAULT_BACKOFF_DELAY * _BACKOFF_MULTIPLIER^n).
     """
     client = get_instructor_client()
-    delay = 2.0
+    rate_limit_delay = get_settings().rate_limit_delay
+    delay = _DEFAULT_BACKOFF_DELAY
     for attempt in range(max_retries + 1):
         try:
-            return client.chat.completions.create(
+            result = client.chat.completions.create(
                 model=model,
                 messages=messages,
                 response_model=response_model,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                max_retries=3,
+                max_retries=_INSTRUCTOR_INTERNAL_RETRIES,
             )
+            time.sleep(rate_limit_delay)
+            return result
         except InstructorRetryException as e:
             # .errors() is a tenacity method in some versions, a property or absent in others
             _errors = e.errors() if callable(getattr(e, "errors", None)) else getattr(e, "errors", None)
@@ -75,22 +86,24 @@ def instructor_complete(
                 raise
             print(f"\n  [rate limit] waiting {delay:.0f}s before retry {attempt + 1}/{max_retries}...", end="", flush=True)
             time.sleep(delay)
-            delay *= 2
+            delay *= _BACKOFF_MULTIPLIER
 
 
 def chat_complete(
     messages: list[dict],
     model: str,
-    temperature: float = 0.7,
-    max_tokens: int = 1500,
-    max_retries: int = 4,
+    temperature: float = _DEFAULT_TEMPERATURE,
+    max_tokens: int = _DEFAULT_MAX_TOKENS,
+    max_retries: int = _DEFAULT_MAX_RETRIES,
 ) -> str:
     """Send a chat completion request and return the assistant message content.
 
-    Retries on 429 RateLimitError with exponential backoff (2s, 4s, 8s, 16s).
+    Sleeps rate_limit_delay seconds after each successful call.
+    Retries on 429 RateLimitError with exponential backoff (_DEFAULT_BACKOFF_DELAY * _BACKOFF_MULTIPLIER^n).
     """
     client = get_client()
-    delay = 2.0
+    rate_limit_delay = get_settings().rate_limit_delay
+    delay = _DEFAULT_BACKOFF_DELAY
     for attempt in range(max_retries + 1):
         try:
             response = client.chat.completions.create(
@@ -99,10 +112,11 @@ def chat_complete(
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
+            time.sleep(rate_limit_delay)
             return response.choices[0].message.content or ""
         except RateLimitError:
             if attempt == max_retries:
                 raise
             print(f"\n  [rate limit] waiting {delay:.0f}s before retry {attempt + 1}/{max_retries}...", end="", flush=True)
             time.sleep(delay)
-            delay *= 2
+            delay *= _BACKOFF_MULTIPLIER
