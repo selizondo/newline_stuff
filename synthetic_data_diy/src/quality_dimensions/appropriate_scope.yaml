@@ -1,0 +1,17 @@
+name: appropriate_scope
+label: "Q7: Appropriate Scope"
+threshold: 0.95
+prompt_template: |
+  Evaluate Q7 — Appropriate Scope.
+
+  Question: {question}
+  Answer: {answer}
+  Steps: {steps}
+
+  The scope is APPROPRIATE if:
+  - The repair complexity matches what an average homeowner with basic tools can handle
+  - It does not recommend tearing apart an entire system when a targeted fix would work
+  - It does not recommend replacing the whole appliance/system for a repairable problem
+  - The number of steps is proportional to the complexity of the task
+
+  Respond with exactly one digit: 1 if PASS, 0 if FAIL.

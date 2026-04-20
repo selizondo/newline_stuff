@@ -1,0 +1,16 @@
+name: problem_answer_alignment
+label: "Q6: Problem-Answer Alignment"
+threshold: 0.95
+prompt_template: |
+  Evaluate Q6 — Problem-Answer Alignment.
+
+  Question: {question}
+  Equipment Problem: {equipment_problem}
+  Answer: {answer}
+
+  The answer PASSES if it:
+  - Directly addresses the specific problem stated in the question
+  - Does not answer a different (related but distinct) question
+  - Does not omit the core repair described in the question
+
+  Respond with exactly one digit: 1 if PASS, 0 if FAIL.

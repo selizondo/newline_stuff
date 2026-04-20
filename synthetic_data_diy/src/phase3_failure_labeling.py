@@ -60,8 +60,8 @@ def load_failure_modes(config_dir: Path = DEFAULT_FAILURE_MODES_DIR) -> list[Fai
 
 
 class FailureLabeler:
-    def __init__(self, model: str, failure_modes: list[FailureMode]):
-        self.model = model
+    def __init__(self, judge_model: str, failure_modes: list[FailureMode]):
+        self.model = judge_model
         self.failure_modes = failure_modes
         self.settings = get_settings()
 
@@ -111,14 +111,14 @@ class FailureLabeler:
 
 def run_failure_labeling_phase(
     valid_results: list[ValidatedResult],
-    model: str,
+    judge_model: str,
     output_dir: Path,
     config_dir: Path = DEFAULT_FAILURE_MODES_DIR,
 ) -> pd.DataFrame:
     failure_modes = load_failure_modes(config_dir)
     print(f"Loaded {len(failure_modes)} failure modes from {config_dir}")
 
-    labeler = FailureLabeler(model=model, failure_modes=failure_modes)
+    labeler = FailureLabeler(judge_model=judge_model, failure_modes=failure_modes)
     label_results: list[FailureLabelResult] = []
 
     for i, result in enumerate(valid_results):

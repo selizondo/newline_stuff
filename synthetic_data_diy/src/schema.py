@@ -125,17 +125,6 @@ QUALITY_DIMENSION_FIELDS: list[str] = [
     "category_accuracy",
 ]
 
-QUALITY_THRESHOLDS: dict[str, float] = {
-    "answer_coherence": 0.90,
-    "step_actionability": 0.85,
-    "tool_realism": 0.95,
-    "safety_specificity": 0.90,
-    "tip_usefulness": 0.85,
-    "problem_answer_alignment": 0.95,
-    "appropriate_scope": 0.95,
-    "category_accuracy": 0.98,
-}
-
 
 class QualityEvalResult(BaseModel):
     trace_id: str

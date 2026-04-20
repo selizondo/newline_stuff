@@ -1,0 +1,14 @@
+name: category_accuracy
+label: "Q8: Category Accuracy"
+threshold: 0.98
+prompt_template: |
+  Evaluate Q8 — Category Accuracy.
+
+  Question: {question}
+  Category: {category}
+
+  Valid categories: appliance_repair, plumbing_repair, electrical_repair, hvac_maintenance, general_home_repair
+
+  The category PASSES if the question and answer are clearly about the stated repair domain.
+
+  Respond with exactly one digit: 1 if PASS (correct category), 0 if FAIL (wrong category).

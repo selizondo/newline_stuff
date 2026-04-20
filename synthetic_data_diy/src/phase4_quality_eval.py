@@ -1,166 +1,73 @@
 """
 Phase 4: Quality Evaluation (LLM-as-Judge)
-Scores each Q&A pair across 8 quality dimensions defined in the project spec.
+Scores each Q&A pair across 8 quality dimensions defined in YAML config files.
+
+Quality dimension configs live in quality_dimensions/<name>.yaml (one file per dimension).
+Add a new file to introduce a new dimension — no Python changes needed.
 """
 
-import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 from config import get_settings
 from llm_client import chat_complete
 from schema import QAPair, QualityEvalResult, ValidatedResult
 
+# Default config directory relative to this file
+DEFAULT_QUALITY_DIMS_DIR = Path(__file__).parent / "quality_dimensions"
+
 
 @dataclass
 class QualityDimension:
     name: str
-    label: str       # human-readable label from spec
+    label: str        # human-readable label from spec
     threshold: float  # required pass rate
     prompt_template: str
 
 
-QUALITY_DIMENSIONS: list[QualityDimension] = [
-    QualityDimension(
-        name="answer_coherence",
-        label="Q1: Answer Coherence",
-        threshold=0.90,
-        prompt_template="""Evaluate Q1 — Answer Coherence.
+def load_quality_dimensions(config_dir: Path = DEFAULT_QUALITY_DIMS_DIR) -> list[QualityDimension]:
+    """Load all quality dimension definitions from YAML files in config_dir.
 
-Question: {question}
-Answer: {answer}
+    Each file must have: name, label, threshold, prompt_template.
+    Files are loaded in alphabetical order for determinism; the order only
+    affects iteration (evaluation order per item), not the final scores.
+    """
+    if not config_dir.exists():
+        raise FileNotFoundError(f"Quality dimensions directory not found: {config_dir}")
 
-The answer PASSES if it:
-- Reads as a coherent narrative, not a disjointed list of disconnected facts
-- Has logical flow from problem identification through resolution
-- Uses transitional language that connects ideas
+    dims: list[QualityDimension] = []
+    yaml_files = sorted(config_dir.glob("*.yaml"))
 
-Respond with exactly one digit: 1 if PASS, 0 if FAIL.""",
-    ),
-    QualityDimension(
-        name="step_actionability",
-        label="Q2: Step Actionability",
-        threshold=0.85,
-        prompt_template="""Evaluate Q2 — Step Actionability.
+    if not yaml_files:
+        raise FileNotFoundError(f"No .yaml files found in {config_dir}")
 
-Question: {question}
-Steps: {steps}
+    for path in yaml_files:
+        with path.open() as f:
+            data = yaml.safe_load(f)
+        missing = [k for k in ("name", "label", "threshold", "prompt_template") if k not in data]
+        if missing:
+            raise ValueError(f"{path.name} is missing required keys: {missing}")
+        dims.append(QualityDimension(
+            name=data["name"],
+            label=data["label"],
+            threshold=float(data["threshold"]),
+            prompt_template=data["prompt_template"],
+        ))
 
-Steps PASS if every step:
-- Contains a specific action verb (tighten, remove, apply, measure, etc.)
-- Avoids vague language ("check", "look at", "make sure it works")
-- Gives enough detail to actually perform the action
+    return dims
 
-Respond with exactly one digit: 1 if PASS, 0 if FAIL.""",
-    ),
-    QualityDimension(
-        name="tool_realism",
-        label="Q3: Tool Realism",
-        threshold=0.95,
-        prompt_template="""Evaluate Q3 — Tool Realism.
 
-Tools Required: {tools}
-
-Tools PASS if ALL of them:
-- Cost less than $50 each
-- Are available at hardware stores (Home Depot, Lowe's, Ace Hardware)
-- Do not require professional licensing to purchase or use
-
-Respond with exactly one digit: 1 if PASS, 0 if FAIL.""",
-    ),
-    QualityDimension(
-        name="safety_specificity",
-        label="Q4: Safety Specificity",
-        threshold=0.90,
-        prompt_template="""Evaluate Q4 — Safety Specificity.
-
-Question: {question}
-Safety Info: {safety_info}
-
-Safety info PASSES if it:
-- Names a specific hazard (e.g., "120V live circuit", "pressurized steam", "sharp metal edges")
-- Gives a specific protective action (e.g., "turn off circuit breaker and verify with non-contact tester")
-- Is at least 80 characters long
-- Is relevant to the specific repair task
-
-Respond with exactly one digit: 1 if PASS, 0 if FAIL.""",
-    ),
-    QualityDimension(
-        name="tip_usefulness",
-        label="Q5: Tip Usefulness",
-        threshold=0.85,
-        prompt_template="""Evaluate Q5 — Tip Usefulness.
-
-Question: {question}
-Tips: {tips}
-
-The tip PASSES if it:
-- Is non-obvious (a beginner would not think of it)
-- Is specific to this exact repair task
-- Provides concrete, actionable value (saves time, prevents damage, or avoids a common mistake)
-- Is NOT generic advice like "wear gloves" or "be careful" or "read the manual"
-
-Respond with exactly one digit: 1 if PASS, 0 if FAIL.""",
-    ),
-    QualityDimension(
-        name="problem_answer_alignment",
-        label="Q6: Problem-Answer Alignment",
-        threshold=0.95,
-        prompt_template="""Evaluate Q6 — Problem-Answer Alignment.
-
-Question: {question}
-Equipment Problem: {equipment_problem}
-Answer: {answer}
-
-The answer PASSES if it:
-- Directly addresses the specific problem stated in the question
-- Does not answer a different (related but distinct) question
-- Does not omit the core repair described in the question
-
-Respond with exactly one digit: 1 if PASS, 0 if FAIL.""",
-    ),
-    QualityDimension(
-        name="appropriate_scope",
-        label="Q7: Appropriate Scope",
-        threshold=0.95,
-        prompt_template="""Evaluate Q7 — Appropriate Scope.
-
-Question: {question}
-Answer: {answer}
-Steps: {steps}
-
-The scope is APPROPRIATE if:
-- The repair complexity matches what an average homeowner with basic tools can handle
-- It does not recommend tearing apart an entire system when a targeted fix would work
-- It does not recommend replacing the whole appliance/system for a repairable problem
-- The number of steps is proportional to the complexity of the task
-
-Respond with exactly one digit: 1 if PASS, 0 if FAIL.""",
-    ),
-    QualityDimension(
-        name="category_accuracy",
-        label="Q8: Category Accuracy",
-        threshold=0.98,
-        prompt_template="""Evaluate Q8 — Category Accuracy.
-
-Question: {question}
-Category: {category}
-
-Valid categories: appliance_repair, plumbing_repair, electrical_repair, hvac_maintenance, general_home_repair
-
-The category PASSES if the question and answer are clearly about the stated repair domain.
-
-Respond with exactly one digit: 1 if PASS (correct category), 0 if FAIL (wrong category).""",
-    ),
-]
+# Module-level constant — loaded once; mirrors the pattern in phase3_failure_labeling.py
+QUALITY_DIMENSIONS: list[QualityDimension] = load_quality_dimensions()
 
 
 class QualityEvaluator:
-    def __init__(self, model: str):
-        self.model = model
+    def __init__(self, judge_model: str):
+        self.model = judge_model
 
     def _judge_dimension(self, dim: QualityDimension, qa: QAPair, category: str) -> int:
         prompt = dim.prompt_template.format(
@@ -205,10 +112,10 @@ class QualityEvaluator:
 
 def run_quality_eval_phase(
     valid_results: list[ValidatedResult],
-    model: str,
+    judge_model: str,
     output_dir: Path,
 ) -> pd.DataFrame:
-    evaluator = QualityEvaluator(model=model)
+    evaluator = QualityEvaluator(judge_model=judge_model)
     eval_results: list[QualityEvalResult] = []
 
     for i, result in enumerate(valid_results):
@@ -225,8 +132,6 @@ def run_quality_eval_phase(
     pass_rate = df["overall_quality_pass"].mean()
     print(f"\nQuality evaluation complete: {pass_rate*100:.1f}% overall quality pass rate")
 
-    # Per-dimension pass rates vs thresholds
-    dim_map = {d.name: d for d in QUALITY_DIMENSIONS}
     print("\nPer-dimension pass rates:")
     for dim in QUALITY_DIMENSIONS:
         rate = df[dim.name].mean()

@@ -1,0 +1,14 @@
+name: tool_realism
+label: "Q3: Tool Realism"
+threshold: 0.95
+prompt_template: |
+  Evaluate Q3 — Tool Realism.
+
+  Tools Required: {tools}
+
+  Tools PASS if ALL of them:
+  - Cost less than $50 each
+  - Are available at hardware stores (Home Depot, Lowe's, Ace Hardware)
+  - Do not require professional licensing to purchase or use
+
+  Respond with exactly one digit: 1 if PASS, 0 if FAIL.

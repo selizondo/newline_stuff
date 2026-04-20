@@ -66,7 +66,7 @@ def _map_benchmark_row(row: dict) -> QAPair | None:
 
 
 def run_benchmark_phase(
-    model: str,
+    judge_model: str,
     output_dir: Path,
     num_samples: int = MIN_BENCHMARK_SAMPLES,
 ) -> BenchmarkReport:
@@ -107,7 +107,7 @@ def run_benchmark_phase(
         print(f"  Skipped {skipped} rows that could not be mapped to QAPair schema.")
 
     print(f"Evaluating {len(valid_results)} benchmark items on 8 quality dimensions...")
-    evaluator = QualityEvaluator(model=model)
+    evaluator = QualityEvaluator(judge_model=judge_model)
     eval_results: list[QualityEvalResult] = []
 
     for i, result in enumerate(valid_results):

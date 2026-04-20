@@ -100,7 +100,8 @@ def main() -> None:
     )
     parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats'")
     parser.add_argument("--samples", type=int, default=50, help="Q&A pairs to generate (default: 50)")
-    parser.add_argument("--model", type=str, default=None, help="LLM model override (default: from .env)")
+    parser.add_argument("--generation-model", type=str, default=None, dest="generation_model", help="Generation model override (default: LLM_MODEL from .env)")
+    parser.add_argument("--judge-model", type=str, default=None, help="LLM-as-Judge model override for Phases 3, 4, 7 (default: LLM_JUDGE_MODEL from .env, falls back to --model)")
     parser.add_argument("--phase", type=str, default="1-7", help="Phase range to run, e.g. '1-5', '6', '7' (default: 1-7)")
     parser.add_argument("--prompt-strategy", type=str, default="zero_shot",
                         choices=["zero_shot", "few_shot", "chain_of_thought"],
@@ -119,10 +120,11 @@ def main() -> None:
         quick_stats(base_output, batch_label=args.batch_label)
         return
 
-    # Resolve model from CLI or config
+    # Resolve models from CLI or config
     from config import get_settings
     settings = get_settings()
-    model = args.model or settings.model
+    generation_model = args.generation_model or settings.generation_model
+    judge_model = args.judge_model or settings.judge_model
 
     strategy = args.prompt_strategy
     batch_label = args.batch_label or f"{strategy}-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -136,7 +138,8 @@ def main() -> None:
 
     _banner("HOME DIY REPAIR Q&A SYNTHETIC DATA PIPELINE")
     print(f"Timestamp       : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"Model           : {model}")
+    print(f"Generation model: {generation_model}")
+    print(f"Judge model     : {judge_model}")
     print(f"LLM base        : {settings.base_url}")
     print(f"Samples         : {args.samples}")
     print(f"Phases          : {phase_start}–{phase_end}")
@@ -153,7 +156,7 @@ def main() -> None:
         from phase1_generation import run_generation_phase
         generation_results = run_generation_phase(
             num_samples=args.samples,
-            model=model,
+            generation_model=generation_model,
             output_dir=output_dir,
             strategy=strategy,
             batch_label=batch_label,
@@ -177,7 +180,7 @@ def main() -> None:
         from phase3_failure_labeling import run_failure_labeling_phase
         if valid_results is None:
             valid_results = load_valid_data(output_dir)
-        run_failure_labeling_phase(valid_results, model, output_dir)
+        run_failure_labeling_phase(valid_results, judge_model, output_dir)
 
     # ── Phase 4: Quality Evaluation ───────────────────────────────────────
     if phase_start <= 4 <= phase_end:
@@ -186,7 +189,7 @@ def main() -> None:
         from phase4_quality_eval import run_quality_eval_phase
         if valid_results is None:
             valid_results = load_valid_data(output_dir)
-        run_quality_eval_phase(valid_results, model, output_dir)
+        run_quality_eval_phase(valid_results, judge_model, output_dir)
 
     # ── Phase 5: Analysis & Visualizations ───────────────────────────────
     if phase_start <= 5 <= phase_end:
@@ -200,7 +203,8 @@ def main() -> None:
         from phase6_correction import run_correction_phase
         report = run_correction_phase(
             num_samples=args.samples,
-            model=model,
+            generation_model=generation_model,
+            judge_model=judge_model,
             baseline_dir=output_dir,
             corrected_dir=corrected_dir,
         )
@@ -214,7 +218,7 @@ def main() -> None:
         _section("PHASE 7 — Benchmark Comparison")
         from phase7_benchmark import run_benchmark_phase
         bench_report = run_benchmark_phase(
-            model=model,
+            judge_model=judge_model,
             output_dir=output_dir,
             num_samples=50,
         )

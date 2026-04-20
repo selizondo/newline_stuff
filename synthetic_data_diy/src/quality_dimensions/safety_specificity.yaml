@@ -1,0 +1,16 @@
+name: safety_specificity
+label: "Q4: Safety Specificity"
+threshold: 0.90
+prompt_template: |
+  Evaluate Q4 — Safety Specificity.
+
+  Question: {question}
+  Safety Info: {safety_info}
+
+  Safety info PASSES if it:
+  - Names a specific hazard (e.g., "120V live circuit", "pressurized steam", "sharp metal edges")
+  - Gives a specific protective action (e.g., "turn off circuit breaker and verify with non-contact tester")
+  - Is at least 80 characters long
+  - Is relevant to the specific repair task
+
+  Respond with exactly one digit: 1 if PASS, 0 if FAIL.

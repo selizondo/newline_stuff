@@ -19,7 +19,8 @@ from phase4_quality_eval import run_quality_eval_phase
 
 def run_correction_phase(
     num_samples: int,
-    model: str,
+    generation_model: str,
+    judge_model: str,
     baseline_dir: Path,
     corrected_dir: Path,
 ) -> ComparisonReport:
@@ -48,17 +49,17 @@ def run_correction_phase(
     corrected_dir.mkdir(parents=True, exist_ok=True)
 
     print("--- Phase 1 (corrected): Generation ---")
-    gen_results = run_generation_phase(num_samples, model, corrected_dir, strategy="human_feedback")
+    gen_results = run_generation_phase(num_samples, generation_model, corrected_dir, strategy="human_feedback")
 
     valid_results_corrected, _ = run_validation_phase(gen_results, corrected_dir)
     if not valid_results_corrected:
         raise RuntimeError("No valid Q&A pairs generated in corrected run. Check prompts and LLM output.")
 
     print("\n--- Phase 3 (corrected): Failure Labeling ---")
-    corrected_fdf = run_failure_labeling_phase(valid_results_corrected, model, corrected_dir)
+    corrected_fdf = run_failure_labeling_phase(valid_results_corrected, judge_model, corrected_dir)
 
     print("\n--- Phase 4 (corrected): Quality Evaluation ---")
-    corrected_qdf = run_quality_eval_phase(valid_results_corrected, model, corrected_dir)
+    corrected_qdf = run_quality_eval_phase(valid_results_corrected, judge_model, corrected_dir)
 
     # Compute comparison
     corrected_failure_rate = float(corrected_fdf["overall_failure"].mean())

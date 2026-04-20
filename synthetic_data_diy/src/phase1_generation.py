@@ -16,8 +16,8 @@ from prompts import load_prompt_templates
 
 
 class DIYDatasetGenerator:
-    def __init__(self, model: str, strategy: str, batch_id: str, batch_label: str):
-        self.model = model
+    def __init__(self, generation_model: str, strategy: str, batch_id: str, batch_label: str):
+        self.model = generation_model
         self.strategy = strategy
         self.batch_id = batch_id
         self.batch_label = batch_label
@@ -114,7 +114,7 @@ def load_generation_results(output_dir: Path) -> list[GenerationResult]:
 
 def run_generation_phase(
     num_samples: int,
-    model: str,
+    generation_model: str,
     output_dir: Path,
     strategy: str = "zero_shot",
     batch_label: str = "",
@@ -123,7 +123,7 @@ def run_generation_phase(
     batch_id = str(uuid.uuid4())
 
     generator = DIYDatasetGenerator(
-        model=model,
+        generation_model=generation_model,
         strategy=strategy,
         batch_id=batch_id,
         batch_label=batch_label,

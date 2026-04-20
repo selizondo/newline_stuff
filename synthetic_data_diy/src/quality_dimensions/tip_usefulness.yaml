@@ -1,0 +1,16 @@
+name: tip_usefulness
+label: "Q5: Tip Usefulness"
+threshold: 0.85
+prompt_template: |
+  Evaluate Q5 — Tip Usefulness.
+
+  Question: {question}
+  Tips: {tips}
+
+  The tip PASSES if it:
+  - Is non-obvious (a beginner would not think of it)
+  - Is specific to this exact repair task
+  - Provides concrete, actionable value (saves time, prevents damage, or avoids a common mistake)
+  - Is NOT generic advice like "wear gloves" or "be careful" or "read the manual"
+
+  Respond with exactly one digit: 1 if PASS, 0 if FAIL.
