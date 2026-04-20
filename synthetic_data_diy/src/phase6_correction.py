@@ -8,14 +8,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import get_settings
-from models import ComparisonReport
+from schema import ComparisonReport
 from phase1_generation import run_generation_phase
-from prompts import CORRECTED_DIR
 from phase2_validation import run_validation_phase
-from models import FAILURE_MODE_FIELDS as FAILURE_MODE_NAMES
+from schema import FAILURE_MODE_FIELDS as FAILURE_MODE_NAMES
 from phase3_failure_labeling import run_failure_labeling_phase
-from models import QUALITY_DIMENSION_FIELDS as QUALITY_DIM_NAMES
+from schema import QUALITY_DIMENSION_FIELDS as QUALITY_DIM_NAMES
 from phase4_quality_eval import run_quality_eval_phase
 
 
@@ -50,7 +48,7 @@ def run_correction_phase(
     corrected_dir.mkdir(parents=True, exist_ok=True)
 
     print("--- Phase 1 (corrected): Generation ---")
-    gen_results = run_generation_phase(num_samples, model, corrected_dir, prompts_dir=CORRECTED_DIR)
+    gen_results = run_generation_phase(num_samples, model, corrected_dir, strategy="human_feedback")
 
     valid_results_corrected, _ = run_validation_phase(gen_results, corrected_dir)
     if not valid_results_corrected:

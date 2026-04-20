@@ -5,15 +5,13 @@ Generates DIY Repair Q&A pairs using LLM with diverse prompt templates.
 
 import json
 import random
-import time
 import uuid
 from pathlib import Path
 
 from instructor.exceptions import InstructorRetryException
 
-from config import get_settings
 from llm_client import instructor_complete
-from models import QAPair, GenerationResult
+from schema import QAPair, GenerationResult
 from prompts import load_prompt_templates
 
 
@@ -24,7 +22,6 @@ class DIYDatasetGenerator:
         self.batch_id = batch_id
         self.batch_label = batch_label
         self.templates = load_prompt_templates(strategy)
-        self.settings = get_settings()
 
     def generate_single(self, template: dict) -> GenerationResult:
         trace_id = str(uuid.uuid4())
@@ -90,8 +87,6 @@ class DIYDatasetGenerator:
             status = "OK" if result.parse_error is None else f"FAIL ({result.parse_error[:60]})"
             print(status)
             results.append(result)
-            if i < num_samples - 1:
-                time.sleep(self.settings.rate_limit_delay)
         return results
 
 

@@ -1,0 +1,47 @@
+category: general_home_repair
+
+system: >-
+  You are a seasoned general contractor with 25 years of home repair experience.
+  You write complete guides that cover root cause, full repair procedure, and
+  prevention. Your tips are always specific to the task — never generic.
+user: |
+  Generate a complete, detailed general home repair Q&A pair.
+
+  Here is an example of a high-quality output:
+  {
+    "question": "How do I fix a door that won't latch properly because it has dropped and rubs against the frame?",
+    "answer": "A door that rubs at the top corner and won't latch has almost always dropped because the hinge screws have worked loose from the jamb over years of use. The weight of the door is leveraged against just the top hinge, so those screws strip out first. Before planing or sanding the door — the instinct most homeowners act on — try tightening the hinge screws. If one or more spin freely, the hole is stripped. Remove the screw and fill the hole with a wooden golf tee coated in wood glue, let it dry for an hour, then trim it flush with a utility knife and drive the original screw back in. The tee gives the screw fresh wood fibres to bite into and the fix lasts for decades. After retightening all hinge screws, close the door and check whether it latches cleanly. If it still rubs slightly, rub the door edge with chalk, close it against the frame, and look for chalk transfer marks to identify the exact contact point before reaching for sandpaper.",
+    "equipment_problem": "Door drops and rubs against frame, failing to latch",
+    "tools_required": ["Phillips screwdriver", "wooden golf tees", "wood glue", "utility knife", "chalk"],
+    "steps": [
+      "Open the door fully and tighten every screw on all three hinges",
+      "Close the door and test the latch — if it catches, the job is done",
+      "For stripped holes, remove the screw and coat a golf tee in wood glue",
+      "Insert the tee into the stripped hole and allow glue to cure for 60 minutes",
+      "Trim the protruding tee flush with the jamb using a utility knife",
+      "Drive the original screw back into the repaired hole and retest the latch"
+    ],
+    "safety_info": "When trimming the wooden tee flush, cut away from your body and keep fingers behind the blade. A utility knife under pressure can snap and deflect unexpectedly.",
+    "tips": [
+      "Use 3-inch screws instead of the original 3/4-inch screws when reassembling — longer screws reach past the jamb into the structural framing and will never strip again",
+      "Apply a thin coat of paste wax to the door edge and latch bolt before reassembly — it eliminates friction without removing material and lets you avoid sanding altogether"
+    ]
+  }
+
+  Now generate a NEW and DIFFERENT general home repair Q&A pair at the same quality level.
+
+  Return ONLY a valid JSON object with exactly these keys:
+  {
+    "question": "<specific DIY repair question, 10-500 chars>",
+    "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+    "equipment_problem": "<concise problem description, 5-200 chars>",
+    "tools_required": ["<tool 1>", "<tool 2>", ...],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", ...],
+    "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+  }
+
+  Rules:
+  - tools_required: homeowner-accessible tools, each costing <$50
+  - steps: at least 4 ordered, specific, actionable steps
+  - Do NOT wrap JSON in markdown code fences.

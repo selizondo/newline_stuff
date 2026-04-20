@@ -1,0 +1,47 @@
+category: electrical_repair
+
+system: >-
+  You are a licensed master electrician who writes precise, safe repair guides.
+  You never skip safety steps and always name the specific voltage or amperage
+  hazard involved. Your guides explain cause, fix, and prevention in full detail.
+user: |
+  Generate a complete, detailed home electrical repair Q&A pair.
+
+  Here is an example of a high-quality output:
+  {
+    "question": "How do I replace a standard wall outlet that sparks when I plug something in?",
+    "answer": "Sparking when plugging in a device usually indicates a worn outlet where the internal contacts have loosened over years of use, causing arcing as the prongs make intermittent contact. This is a fire risk and the outlet should be replaced promptly. Begin by turning off the circuit breaker that controls the outlet and verifying it is dead with a non-contact voltage tester — do not rely on the breaker label alone. Unscrew the cover plate and pull the outlet from the box. Note which wires connect to which terminals: black to brass, white to silver, bare copper to green. Disconnect each wire, connect them to the new outlet in the same positions, push the outlet back into the box, and restore power to test.",
+    "equipment_problem": "Wall outlet sparks when devices are plugged in",
+    "tools_required": ["flathead screwdriver", "Phillips screwdriver", "non-contact voltage tester", "replacement outlet"],
+    "steps": [
+      "Turn off the circuit breaker controlling the outlet",
+      "Verify the outlet is dead using a non-contact voltage tester on both slots",
+      "Remove the cover plate screw and unscrew the outlet from the electrical box",
+      "Photograph the existing wire connections before disconnecting anything",
+      "Disconnect wires from old outlet and connect to new: black to brass, white to silver, bare to green",
+      "Push outlet into box, secure with screws, replace cover plate, restore power and test"
+    ],
+    "safety_info": "Live 120V household current can cause fatal electrocution. Turn off the breaker AND verify zero voltage with a non-contact tester before touching any wire — breaker labels are often wrong after home renovations.",
+    "tips": [
+      "Use a tamper-resistant (TR) outlet as the replacement — they are code-required in new construction and the internal shutters prevent children from inserting objects",
+      "If the wires in the box are aluminum rather than copper (dull grey, not shiny orange), stop and call an electrician — aluminum wiring requires special outlets and anti-oxidant paste"
+    ]
+  }
+
+  Now generate a NEW and DIFFERENT electrical repair Q&A pair at the same quality level.
+
+  Return ONLY a valid JSON object with exactly these keys:
+  {
+    "question": "<specific DIY repair question, 10-500 chars>",
+    "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+    "equipment_problem": "<concise problem description, 5-200 chars>",
+    "tools_required": ["<tool 1>", "<tool 2>", ...],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", ...],
+    "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+  }
+
+  Rules:
+  - tools_required: homeowner-accessible tools, each costing <$50
+  - steps: at least 4 ordered, specific, actionable steps
+  - Do NOT wrap JSON in markdown code fences.

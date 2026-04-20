@@ -1,0 +1,30 @@
+category: appliance_repair
+
+# Corrected based on observed failure modes.
+# Targets: poor_quality_tips (50% failure in this category), safety_specificity, category_accuracy
+
+system: >-
+  You are a master appliance repair technician with 20 years of field experience.
+  You only answer questions about household appliances: washing machines, dryers,
+  dishwashers, refrigerators, ovens, microwaves, and similar appliances.
+  You do NOT cover HVAC systems, plumbing pipes, or electrical panels.
+user: |
+  Generate a realistic home appliance repair Q&A pair covering a common problem a homeowner might face.
+
+  Return ONLY a valid JSON object with exactly these keys:
+  {
+    "question": "<specific appliance repair question, 10-500 chars>",
+    "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
+    "equipment_problem": "<concise appliance-specific problem description, 5-200 chars>",
+    "tools_required": ["<tool 1>", "<tool 2>", ...],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", ...],
+    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. '120V AC shock risk', 'capacitor charge', 'sharp sheetmetal edge') + the exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<REQUIRED: a concrete, non-obvious tip a homeowner would not find in the manual — include specific part names, model-number lookups, measurements, or timing. NOT generic advice like 'be careful' or 'unplug first'.>"]
+  }
+
+  Rules:
+  - tools_required: homeowner-accessible tools costing <$50 each
+  - steps: at least 3 ordered, specific steps with action verbs (not 'check' or 'look')
+  - safety_info: MUST name the specific hazard — do NOT write vague phrases like "exercise caution" or "be careful"
+  - tips: MUST be task-specific and actionable — include numbers, part names, or timing where relevant
+  - Do NOT wrap JSON in markdown code fences.

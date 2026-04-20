@@ -51,20 +51,43 @@ def _section(text: str) -> None:
 # stats subcommand
 # ---------------------------------------------------------------------------
 
-def quick_stats(output_dir: Path) -> None:
-    for name, fname in [
-        ("Validation summary", "validation_summary.json"),
-        ("Analysis report", "analysis_report.json"),
-        ("Before/after comparison", "corrected/before_after_comparison.json"),
-        ("Benchmark report", "benchmark_report.json"),
-    ]:
-        path = output_dir / fname
-        if path.exists():
-            data = json.loads(path.read_text())
-            print(f"\n── {name} ({path}) ──")
-            print(json.dumps(data, indent=2))
-        else:
-            print(f"\n── {name}: not found ({path}) ──")
+def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
+    """Print summaries from an existing run.
+
+    If batch_label is given, reads from output_dir/batch_label/.
+    Otherwise lists all available batch directories under output_dir.
+    """
+    if batch_label:
+        run_dir = output_dir / batch_label
+        if not run_dir.exists():
+            print(f"Batch directory not found: {run_dir}")
+            available = [d.name for d in sorted(output_dir.iterdir()) if d.is_dir()]
+            if available:
+                print(f"Available batches: {', '.join(available)}")
+            return
+        for name, fname in [
+            ("Validation summary", "validation_summary.json"),
+            ("Analysis report", "analysis_report.json"),
+            ("Before/after comparison", "corrected/before_after_comparison.json"),
+            ("Benchmark report", "benchmark_report.json"),
+        ]:
+            path = run_dir / fname
+            if path.exists():
+                data = json.loads(path.read_text())
+                print(f"\n── {name} ({path}) ──")
+                print(json.dumps(data, indent=2))
+            else:
+                print(f"\n── {name}: not found ({path}) ──")
+    else:
+        batches = sorted([d for d in output_dir.iterdir() if d.is_dir()]) if output_dir.exists() else []
+        if not batches:
+            print(f"No batch directories found under {output_dir}.")
+            print("Run the pipeline first, or use --batch-label <name> to target a specific run.")
+            return
+        print(f"Available batches in {output_dir}:")
+        for d in batches:
+            files = [f.name for f in sorted(d.iterdir()) if f.is_file()]
+            print(f"  {d.name}  ({len(files)} files)")
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +116,7 @@ def main() -> None:
     base_output = Path(args.output_dir)
 
     if args.command == "stats":
-        quick_stats(base_output)
+        quick_stats(base_output, batch_label=args.batch_label)
         return
 
     # Resolve model from CLI or config
@@ -198,7 +221,7 @@ def main() -> None:
         # Update benchmark comparison visualization
         from phase5_analysis import run_analysis_phase
         import pandas as pd
-        from models import QUALITY_DIMENSION_FIELDS as QUALITY_DIM_NAMES
+        from schema import QUALITY_DIMENSION_FIELDS as QUALITY_DIM_NAMES
         bench_csv = output_dir / "benchmark_eval.csv"
         bench_rates = None
         if bench_csv.exists():
@@ -220,8 +243,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "stats":
-        from pathlib import Path as _Path
-        quick_stats(_Path("output"))
-    else:
-        main()
+    main()

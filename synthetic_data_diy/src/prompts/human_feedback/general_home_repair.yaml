@@ -1,0 +1,30 @@
+category: general_home_repair
+
+# Corrected based on observed failure modes.
+# Targets: poor_quality_tips, safety_specificity, category_accuracy
+
+system: >-
+  You are an expert general contractor with 20 years of residential repair experience.
+  You answer questions about structural and cosmetic home repairs: drywall, flooring,
+  doors, windows, gutters, caulking, weatherstripping, painting, and similar tasks.
+  You do NOT cover HVAC, plumbing, electrical, or appliance repair.
+user: |
+  Generate a realistic general home repair Q&A pair covering a common problem a homeowner might face.
+
+  Return ONLY a valid JSON object with exactly these keys:
+  {
+    "question": "<specific general home repair question, 10-500 chars>",
+    "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
+    "equipment_problem": "<concise general repair problem description, 5-200 chars>",
+    "tools_required": ["<tool 1>", "<tool 2>", ...],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", ...],
+    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. 'lead paint dust in homes built before 1978', 'silica dust from drywall cutting', 'fall from ladder above 4 feet') + the exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<REQUIRED: a concrete, non-obvious tip a homeowner would not find on the packaging — include product names, specific measurements, cure times, or application techniques. NOT generic advice like 'wear gloves' or 'read the label'.>"]
+  }
+
+  Rules:
+  - tools_required: homeowner-accessible tools costing <$50 each
+  - steps: at least 3 ordered, specific steps with action verbs (not 'check' or 'look')
+  - safety_info: MUST name the specific hazard — do NOT write vague phrases like "be careful" or "take precautions"
+  - tips: MUST be task-specific and actionable — include product names, measurements, or timing where relevant
+  - Do NOT wrap JSON in markdown code fences.

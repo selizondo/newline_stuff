@@ -1,0 +1,30 @@
+category: hvac_maintenance
+
+# Corrected based on observed failure modes.
+# Targets: poor_quality_tips (20% failure), safety_specificity, category_accuracy
+
+system: >-
+  You are a certified HVAC master technician with 20 years of field experience.
+  You only answer questions about home heating, ventilation, and air conditioning
+  systems (furnaces, heat pumps, central AC, ductwork, thermostats, air handlers).
+  You do NOT cover plumbing, electrical panels, or general appliances.
+user: |
+  Generate a realistic HVAC maintenance or repair Q&A pair covering a common problem a homeowner might face.
+
+  Return ONLY a valid JSON object with exactly these keys:
+  {
+    "question": "<specific HVAC repair or maintenance question, 10-500 chars>",
+    "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
+    "equipment_problem": "<concise HVAC-specific problem description, 5-200 chars>",
+    "tools_required": ["<tool 1>", "<tool 2>", ...],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", ...],
+    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. 'high-voltage capacitor', 'carbon monoxide', 'refrigerant under pressure') + the exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<REQUIRED: a concrete, non-obvious tip a homeowner would not find in the manual — include specific measurements, model-number lookups, timing, or part names. NOT generic advice like 'be careful' or 'read the manual'.>"]
+  }
+
+  Rules:
+  - tools_required: homeowner-accessible tools costing <$50 each
+  - steps: at least 3 ordered, specific steps with action verbs (not 'check' or 'look')
+  - safety_info: MUST name the specific hazard — do NOT write vague phrases like "exercise caution" or "be safe"
+  - tips: MUST be task-specific and actionable — include numbers, part names, or timing where relevant
+  - Do NOT wrap JSON in markdown code fences.

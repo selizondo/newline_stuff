@@ -12,7 +12,7 @@ matplotlib.use("Agg")  # non-interactive backend
 import pandas as pd
 import seaborn as sns
 
-from models import AnalysisSummary
+from schema import AnalysisSummary
 from phase3_failure_labeling import load_failure_modes
 from phase4_quality_eval import QUALITY_DIMENSIONS
 

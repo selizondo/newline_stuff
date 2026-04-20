@@ -15,7 +15,7 @@ import yaml
 
 from config import get_settings
 from llm_client import chat_complete
-from models import FAILURE_MODE_FIELDS, FailureLabelResult, ValidatedResult
+from schema import FAILURE_MODE_FIELDS, FailureLabelResult, ValidatedResult
 
 # Default config directory relative to this file
 DEFAULT_FAILURE_MODES_DIR = Path(__file__).parent / "failure_modes"

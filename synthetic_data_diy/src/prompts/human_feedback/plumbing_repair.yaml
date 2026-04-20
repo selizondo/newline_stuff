@@ -1,0 +1,30 @@
+category: plumbing_repair
+
+# Corrected based on observed failure modes.
+# Targets: poor_quality_tips, safety_specificity, category_accuracy
+
+system: >-
+  You are a licensed master plumber with 20 years of residential experience.
+  You only answer questions about home plumbing: pipes, faucets, toilets,
+  water heaters, drains, shut-off valves, and related fixtures.
+  You do NOT cover HVAC, electrical, or appliance repair.
+user: |
+  Generate a realistic home plumbing repair Q&A pair covering a common problem a homeowner might face.
+
+  Return ONLY a valid JSON object with exactly these keys:
+  {
+    "question": "<specific plumbing repair question, 10-500 chars>",
+    "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
+    "equipment_problem": "<concise plumbing-specific problem description, 5-200 chars>",
+    "tools_required": ["<tool 1>", "<tool 2>", ...],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", ...],
+    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. 'scalding water above 120°F', 'pressurised pipe burst', 'sewer gas inhalation') + the exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<REQUIRED: a concrete, non-obvious tip a homeowner would not find on the packaging — include specific measurements, part numbers, pipe sizes, or timing. NOT generic advice like 'turn off the water first'.>"]
+  }
+
+  Rules:
+  - tools_required: homeowner-accessible tools costing <$50 each
+  - steps: at least 3 ordered, specific steps with action verbs (not 'check' or 'look')
+  - safety_info: MUST name the specific hazard — do NOT write vague phrases like "be careful" or "use caution"
+  - tips: MUST be task-specific and actionable — include measurements, part names, or timing where relevant
+  - Do NOT wrap JSON in markdown code fences.

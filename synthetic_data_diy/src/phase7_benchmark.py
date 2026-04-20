@@ -12,8 +12,9 @@ from pathlib import Path
 import pandas as pd
 
 from config import get_settings
-from models import BenchmarkReport, QAPair, QualityEvalResult, ValidatedResult
-from phase4_quality_eval import QUALITY_DIM_NAMES, QUALITY_DIMENSIONS, QualityEvaluator
+from schema import BenchmarkReport, QAPair, QualityEvalResult, ValidatedResult
+from schema import QUALITY_DIMENSION_FIELDS as QUALITY_DIM_NAMES
+from phase4_quality_eval import QUALITY_DIMENSIONS, QualityEvaluator
 
 BENCHMARK_DATASET = "dipenbhuva/home-diy-repair-qa"
 MIN_BENCHMARK_SAMPLES = 50

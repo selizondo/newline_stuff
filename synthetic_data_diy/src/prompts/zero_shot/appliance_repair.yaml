@@ -1,0 +1,23 @@
+category: appliance_repair
+
+system: >-
+  You are an expert appliance repair technician with 15 years of experience
+  helping homeowners fix common household appliances.
+user: |
+  Generate a realistic home repair Q&A pair covering a common problem a homeowner might face for appliance repair. 
+
+  Return ONLY a valid JSON object with exactly these keys:
+  {
+    "question": "<specific DIY repair question, 10-500 chars>",
+    "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
+    "equipment_problem": "<concise problem description, 5-200 chars>",
+    "tools_required": ["<tool 1>", "<tool 2>", ...],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", ...],
+    "safety_info": "<specific hazard + precaution, minimum 80 chars>",
+    "tips": ["<non-obvious, task-specific tip that saves time or prevents damage>"]
+  }
+
+  Rules:
+  - tools_required: list of homeowner-accessible tools costing <$50 each
+  - steps: at least 3 ordered steps
+  - Do NOT wrap JSON in markdown code fences.

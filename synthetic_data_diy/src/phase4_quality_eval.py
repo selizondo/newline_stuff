@@ -12,7 +12,7 @@ import pandas as pd
 
 from config import get_settings
 from llm_client import chat_complete
-from models import QAPair, QualityEvalResult, ValidatedResult
+from schema import QAPair, QualityEvalResult, ValidatedResult
 
 
 @dataclass

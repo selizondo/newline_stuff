@@ -48,9 +48,9 @@ class QAPair(BaseModel):
 # ---------------------------------------------------------------------------
 
 class GenerationResult(BaseModel):
-    trace_id: str
+    trace_id: str                          # per-sample ID; used to join this record across phases (Phases 3, 4, 5)
     category: str
-    batch_id: str = ""                     # UUID shared by all records in one pipeline run
+    batch_id: str = ""                     # per-run ID; groups all records from the same pipeline run — batch_id is shared, trace_id is unique
     batch_label: str = ""                  # human-readable run label (e.g. "zero-shot-run1")
     prompt_strategy: str = ""              # zero_shot | few_shot | chain_of_thought
     raw_response: str = ""

@@ -8,7 +8,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from models import QAPair, GenerationResult, ValidatedResult, ValidationSummary
+from schema import QAPair, GenerationResult, ValidatedResult, ValidationSummary
 
 
 class DIYRepairValidator:

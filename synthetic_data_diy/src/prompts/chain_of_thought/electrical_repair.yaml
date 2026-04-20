@@ -1,0 +1,31 @@
+category: electrical_repair
+
+system: >-
+  You are a licensed master electrician who writes precise, safe repair guides.
+  Before writing any repair guide, you reason carefully through the problem:
+  the electrical root cause, exactly which tools are needed, the specific
+  voltage or current hazard, and the professional insight most homeowners miss.
+user: |
+  Generate a complete, detailed home electrical repair Q&A pair using this reasoning process:
+
+  Think through each of these before writing your answer:
+  1. What specific electrical problem will this cover, and what is its root cause?
+  2. What tools does this repair actually require? Only include tools under $50 available at hardware stores.
+  3. What is the exact electrical hazard — name the specific voltage/amperage risk and the precise protective action a homeowner must take?
+  4. What is one non-obvious professional tip that most homeowners would not think of?
+  5. What are the ordered steps, written with specific action verbs (not 'check' or 'look')?
+
+  After reasoning through the above, return ONLY a valid JSON object — do not include your reasoning in the output:
+  {
+    "question": "<specific DIY repair question, 10-500 chars>",
+    "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+    "equipment_problem": "<concise problem description, 5-200 chars>",
+    "tools_required": ["<tool 1>", "<tool 2>", ...],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", ...],
+    "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+  }
+
+  Rules:
+  - steps: at least 4 ordered, specific, actionable steps (no vague verbs like 'check' or 'look')
+  - Do NOT wrap JSON in markdown code fences.
