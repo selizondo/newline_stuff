@@ -186,6 +186,47 @@ prompts.
 
 ---
 
+## Cost Analysis
+
+The pipeline makes two distinct types of LLM calls with different cost profiles:
+
+- **Generation** (Phase 1, Phase 6): long outputs (~500 tokens), quality-sensitive — benefits from a capable model
+- **Judging** (Phases 3, 4, 7): single-token outputs (`0` or `1`), high volume — benefits from a fast, cheap model
+
+### Per-run cost estimate (50 samples)
+
+Assumptions: ~300 input / ~500 output tokens per generation call; ~200 input / ~1 output token per judge call (8 dimensions × 50 samples = 400 judge calls, plus 6 failure modes × 50 = 300, plus 50 benchmark calls).
+
+| Role | Model | Provider | Input | Output | Est. cost / run |
+|---|---|---|---|---|---|
+| Generation | `llama-3.1-8b-instant` | Groq | $0.05/1M | $0.08/1M | ~$0.003 |
+| Generation | `llama-3.3-70b-versatile` | Groq | $0.59/1M | $0.79/1M | ~$0.030 |
+| Generation | `gpt-4o-mini` | OpenAI | $0.15/1M | $0.60/1M | ~$0.008 |
+| Judge | `qwen2.5:3b` (Ollama local) | — | free | free | $0.000 |
+| Judge | `llama-3.1-8b-instant` | Groq | $0.05/1M | $0.08/1M | ~$0.001 |
+
+### Recommended setup
+
+```
+# .env
+LLM_MODEL=llama-3.1-8b-instant       # Groq — fast, cheap, sufficient for structured generation
+LLM_JUDGE_MODEL=qwen2.5:3b           # Ollama local — free, strong instruction following for 0/1 output
+LLM_JUDGE_BASE_URL=http://localhost:11434/v1
+LLM_JUDGE_API_KEY=ollama
+LLM_JUDGE_RATE_LIMIT_DELAY=0.0
+```
+
+**Estimated total cost per full 7-phase run: ~$0.003** (generation only; judging is free locally).
+
+### When to upgrade the generation model
+
+Switch to `llama-3.3-70b-versatile` or `gpt-4o-mini` if Phase 2 structural validation
+drops below 90% or Phase 4 quality pass rates are consistently low — those are signals
+that the 8B model is struggling with schema compliance or content depth, and the ~10×
+cost increase is justified.
+
+---
+
 ## Quality Targets
 
 | Metric | Target |

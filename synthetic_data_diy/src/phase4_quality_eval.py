@@ -88,7 +88,7 @@ class QualityEvaluator:
             {"role": "user", "content": prompt},
         ]
         try:
-            raw = chat_complete(messages, model=self.model, temperature=0.1, max_tokens=10)
+            raw = chat_complete(messages, model=self.model, temperature=0.1, max_tokens=10, use_judge_client=True)
             digit = raw.strip()[0]
             return int(digit) if digit in ("0", "1") else 0
         except Exception:

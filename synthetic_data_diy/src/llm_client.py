@@ -1,6 +1,10 @@
 """
 Configurable LLM client — wraps the OpenAI Python SDK.
 Works with OpenAI, Ollama (http://localhost:11434/v1), or any OpenAI-compatible endpoint.
+
+Maintains two independent cached clients:
+  - generation client  → LLM_BASE_URL / LLM_API_KEY  (Phase 1 generation)
+  - judge client       → LLM_JUDGE_BASE_URL / LLM_JUDGE_API_KEY  (Phases 3, 4, 7)
 """
 
 import time
@@ -15,9 +19,14 @@ from config import Settings, get_settings
 
 T = TypeVar("T", bound=BaseModel)
 
-_client: OpenAI | None = None
-_instructor_client: instructor.Instructor | None = None
-_rate_limit_delay: float | None = None
+# Generation client cache
+_gen_client: OpenAI | None = None
+_gen_instructor_client: instructor.Instructor | None = None
+_gen_rate_limit_delay: float | None = None
+
+# Judge client cache
+_judge_client: OpenAI | None = None
+_judge_rate_limit_delay: float | None = None
 
 # Defaults shared by instructor_complete and chat_complete
 _DEFAULT_TEMPERATURE: float = 0.7
@@ -30,28 +39,43 @@ _INSTRUCTOR_INTERNAL_RETRIES: int = 3  # Instructor-level validation retries
 
 
 def get_client(settings: Settings | None = None) -> OpenAI:
-    """Return a cached OpenAI-compatible client."""
-    global _client, _rate_limit_delay
-    if _client is None:
+    """Return the cached generation OpenAI-compatible client."""
+    global _gen_client, _gen_rate_limit_delay
+    if _gen_client is None:
         s = settings or get_settings()
-        _client = OpenAI(base_url=s.base_url, api_key=s.api_key)
-        _rate_limit_delay = s.rate_limit_delay
-    return _client
+        _gen_client = OpenAI(base_url=s.base_url, api_key=s.api_key)
+        _gen_rate_limit_delay = s.rate_limit_delay
+    return _gen_client
 
 
-def _get_rate_limit_delay() -> float:
-    """Return the cached rate_limit_delay, initialising the client if needed."""
-    if _rate_limit_delay is None:
-        get_client()
-    return _rate_limit_delay  # type: ignore[return-value]
+def get_judge_client(settings: Settings | None = None) -> OpenAI:
+    """Return the cached judge OpenAI-compatible client (may point at a different endpoint)."""
+    global _judge_client, _judge_rate_limit_delay
+    if _judge_client is None:
+        s = settings or get_settings()
+        _judge_client = OpenAI(base_url=s.judge_base_url, api_key=s.judge_api_key)
+        _judge_rate_limit_delay = s.judge_rate_limit_delay
+    return _judge_client
 
 
 def get_instructor_client(settings: Settings | None = None) -> instructor.Instructor:
-    """Return a cached Instructor-patched OpenAI client for structured outputs."""
-    global _instructor_client
-    if _instructor_client is None:
-        _instructor_client = instructor.from_openai(get_client(settings))
-    return _instructor_client
+    """Return the cached Instructor-patched generation client."""
+    global _gen_instructor_client
+    if _gen_instructor_client is None:
+        _gen_instructor_client = instructor.from_openai(get_client(settings))
+    return _gen_instructor_client
+
+
+def _get_gen_rate_limit_delay() -> float:
+    if _gen_rate_limit_delay is None:
+        get_client()
+    return _gen_rate_limit_delay  # type: ignore[return-value]
+
+
+def _get_judge_rate_limit_delay() -> float:
+    if _judge_rate_limit_delay is None:
+        get_judge_client()
+    return _judge_rate_limit_delay  # type: ignore[return-value]
 
 
 def instructor_complete(
@@ -62,13 +86,13 @@ def instructor_complete(
     max_tokens: int = _DEFAULT_MAX_TOKENS,
     max_retries: int = _DEFAULT_MAX_RETRIES,
 ) -> T:
-    """Use Instructor to generate a structured Pydantic object from an LLM.
+    """Use Instructor to generate a structured Pydantic object from the generation LLM.
 
     Sleeps rate_limit_delay seconds after each successful call.
-    Retries on 429 RateLimitError with exponential backoff (_DEFAULT_BACKOFF_DELAY * _BACKOFF_MULTIPLIER^n).
+    Retries on 429 RateLimitError with exponential backoff.
     """
     client = get_instructor_client()
-    rate_limit_delay = _get_rate_limit_delay()
+    rate_limit_delay = _get_gen_rate_limit_delay()
     delay = _DEFAULT_BACKOFF_DELAY
     for attempt in range(max_retries + 1):
         try:
@@ -83,7 +107,6 @@ def instructor_complete(
             time.sleep(rate_limit_delay)
             return result
         except InstructorRetryException as e:
-            # .errors() is a tenacity method in some versions, a property or absent in others
             _errors = e.errors() if callable(getattr(e, "errors", None)) else getattr(e, "errors", None)
             print(f"\n  [validation failed] {e.n_attempts} attempt(s), model={model}")
             print(f"  errors: {_errors}")
@@ -107,14 +130,24 @@ def chat_complete(
     temperature: float = _DEFAULT_TEMPERATURE,
     max_tokens: int = _DEFAULT_MAX_TOKENS,
     max_retries: int = _DEFAULT_MAX_RETRIES,
+    use_judge_client: bool = False,
 ) -> str:
     """Send a chat completion request and return the assistant message content.
 
-    Sleeps rate_limit_delay seconds after each successful call.
-    Retries on 429 RateLimitError with exponential backoff (_DEFAULT_BACKOFF_DELAY * _BACKOFF_MULTIPLIER^n).
+    Sleeps the appropriate rate_limit_delay after each successful call.
+    Retries on 429 RateLimitError with exponential backoff.
+
+    Args:
+        use_judge_client: When True, routes through the judge client/endpoint
+                          (LLM_JUDGE_BASE_URL). Used by Phases 3, 4, and 7.
     """
-    client = get_client()
-    rate_limit_delay = _get_rate_limit_delay()
+    if use_judge_client:
+        client = get_judge_client()
+        rate_limit_delay = _get_judge_rate_limit_delay()
+    else:
+        client = get_client()
+        rate_limit_delay = _get_gen_rate_limit_delay()
+
     delay = _DEFAULT_BACKOFF_DELAY
     for attempt in range(max_retries + 1):
         try:

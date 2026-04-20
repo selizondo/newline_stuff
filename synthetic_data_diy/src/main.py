@@ -138,9 +138,8 @@ def main() -> None:
 
     _banner("HOME DIY REPAIR Q&A SYNTHETIC DATA PIPELINE")
     print(f"Timestamp       : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"Generation model: {generation_model}")
-    print(f"Judge model     : {judge_model}")
-    print(f"LLM base        : {settings.base_url}")
+    print(f"Generation model: {generation_model} ({settings.base_url})")
+    print(f"Judge model     : {judge_model} ({settings.judge_base_url})")
     print(f"Samples         : {args.samples}")
     print(f"Phases          : {phase_start}–{phase_end}")
     print(f"Prompt strategy : {strategy}")
