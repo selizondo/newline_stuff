@@ -3,8 +3,8 @@
 A 7-phase pipeline that generates, validates, evaluates, and iteratively improves
 synthetic Q&A pairs for home DIY repair tasks. The pipeline demonstrates the full
 lifecycle of LLM-generated training data: from raw generation through structured
-validation, LLM-as-Judge quality scoring, failure analysis, prompt correction, and
-finally calibration against a real-world benchmark dataset.
+validation, judge calibration against a real-world benchmark, LLM-as-Judge quality
+scoring, failure analysis, and data-driven iterative prompt correction.
 
 ---
 
@@ -24,9 +24,11 @@ python main.py --batch-label my-run-1
 python main.py --generation-model gpt-4o-mini --judge-model gpt-4o --batch-label my-run-1
 
 # Run only specific phases
-python main.py --phase 1-5 --batch-label my-run-1
-python main.py --phase 6   --batch-label my-run-1
+python main.py --phase 1-6 --batch-label my-run-1
 python main.py --phase 7   --batch-label my-run-1
+
+# Correction with up to 5 iterations
+python main.py --phase 7 --max-iterations 5 --batch-label my-run-1
 
 # Inspect results from a previous run
 python main.py stats --batch-label my-run-1
@@ -41,8 +43,11 @@ Settings are loaded from environment variables (or a `.env` file):
 | `LLM_API_KEY` | *(required)* | API key for the LLM provider |
 | `LLM_BASE_URL` | `https://api.openai.com/v1` | OpenAI-compatible endpoint (works with Ollama) |
 | `LLM_MODEL` | `gpt-4o-mini` | Model used for data generation (Phase 1) |
-| `LLM_JUDGE_MODEL` | same as `LLM_MODEL` | Model used for LLM-as-Judge evaluation (Phases 3, 4, 7) |
-| `LLM_RATE_LIMIT_DELAY` | `2.0` | Seconds to sleep after each successful LLM call |
+| `LLM_JUDGE_MODEL` | same as `LLM_MODEL` | Model used for LLM-as-Judge evaluation (Phases 3, 4, 5) |
+| `LLM_JUDGE_BASE_URL` | same as `LLM_BASE_URL` | Endpoint for the judge model (e.g. local Ollama) |
+| `LLM_JUDGE_API_KEY` | same as `LLM_API_KEY` | API key for the judge endpoint |
+| `LLM_RATE_LIMIT_DELAY` | `2.0` | Seconds to sleep after each generation LLM call |
+| `LLM_JUDGE_RATE_LIMIT_DELAY` | `0.0` | Seconds to sleep after each judge LLM call |
 
 All settings can also be overridden at the CLI level via `--generation-model` and `--judge-model`.
 
@@ -55,7 +60,7 @@ Phase 1 generation supports four strategies, selected via `--prompt-strategy`:
 | `zero_shot` | Minimal instructions, no examples (default) |
 | `few_shot` | Detailed instructions with one worked example per category |
 | `chain_of_thought` | Explicit reasoning steps before generating output |
-| `human_feedback` | Corrected prompts targeting observed failure modes; used internally by Phase 6 |
+| `human_feedback` | Corrected prompts targeting observed failure modes; used internally by Phase 7 |
 
 Templates live in `prompts/<strategy>/` — one YAML per repair category. Add a new
 strategy by creating a subdirectory with 5 category YAMLs; no code changes needed.
@@ -101,7 +106,22 @@ the authoritative gate.
 
 ---
 
-### Phase 3 — Failure Labeling (LLM-as-Judge)
+### Phase 3 — Benchmark Calibration (Judge Verification)
+
+**What it does:** Loads 50 samples from the `dipenbhuva/home-diy-repair-qa` HuggingFace
+dataset, maps them to the `QAPair` schema, and runs the Phase 5 quality judge on them.
+Reports per-dimension pass rates and a calibration pass/fail (≥ 95% required). Saves
+`benchmark_eval.csv` and `benchmark_report.json`.
+
+**Rationale:** Running calibration *before* Phases 4 and 5 means any systematic judge
+miscalibration is caught before it silently distorts all downstream quality metrics and
+correction targets. A judge that fails calibration is untrustworthy; continuing with it
+would invalidate the entire feedback loop. Phase 6 (analysis) auto-loads `benchmark_eval.csv`
+for an apples-to-apples quality gap comparison.
+
+---
+
+### Phase 4 — Failure Labeling (LLM-as-Judge)
 
 **What it does:** A separate LLM judge evaluates each validated Q&A pair against six
 binary failure modes: `incomplete_answer`, `safety_violations`, `unrealistic_tools`,
@@ -113,12 +133,12 @@ rather than just *"is this data good?"*. Binary per-mode labels are easier for a
 to produce reliably than a holistic score, and they give actionable signal: if
 `poor_quality_tips` is the dominant failure mode, the fix is targeted prompt engineering
 for that specific problem rather than a wholesale rewrite. Storing mode labels per sample
-also enables correlation analysis (Phase 5) to surface which failure modes tend to
+also enables correlation analysis (Phase 6) to surface which failure modes tend to
 co-occur.
 
 ---
 
-### Phase 4 — Quality Evaluation (LLM-as-Judge)
+### Phase 5 — Quality Evaluation (LLM-as-Judge)
 
 **What it does:** A second LLM judge scores each sample across eight quality dimensions:
 `answer_coherence`, `step_actionability`, `tool_realism`, `safety_specificity`,
@@ -126,7 +146,7 @@ co-occur.
 `category_accuracy`. Each dimension has a pass/fail threshold defined in its YAML config
 under `quality_dimensions/`. A sample passes overall only if it passes all eight.
 
-**Rationale:** Where Phase 3 looks for specific defects, Phase 4 evaluates positive
+**Rationale:** Where Phase 4 looks for specific defects, Phase 5 evaluates positive
 quality attributes. Using a dedicated judge model (configurable via `LLM_JUDGE_MODEL`)
 separates the roles: a cheaper, faster model can generate data while a more capable model
 acts as the quality gate. Defining dimensions and thresholds in YAML makes it easy to
@@ -134,55 +154,50 @@ adjust criteria or add new dimensions without touching Python code.
 
 ---
 
-### Phase 5 — Analysis & Visualizations
+### Phase 6 — Analysis & Visualizations
 
-**What it does:** Joins the Phase 3 and Phase 4 outputs and produces six charts plus a
-structured `AnalysisSummary` JSON report:
+**What it does:** Joins the Phase 4 and Phase 5 outputs and produces six charts plus a
+structured `AnalysisSummary` JSON report. Auto-loads `benchmark_eval.csv` from Phase 3
+to compute an apples-to-apples quality gap (both sides measured on `overall_quality_pass`):
 
 1. Failure mode heatmap (samples × modes)
 2. Failure rates by repair category
-3. Before vs. after failure mode trends (populated after Phase 6)
+3. Before vs. after failure mode trends (populated after Phase 7)
 4. Quality dimension pass rates vs. thresholds
-5. Generated vs. benchmark quality comparison (populated after Phase 7)
+5. Generated vs. benchmark quality comparison
 6. Failure mode correlation heatmap
 
 **Rationale:** Raw numbers from the judge phases are hard to act on without context.
 Visualizations make it immediately obvious which categories are most problematic, which
 failure modes cluster together, and which quality dimensions are furthest below threshold.
-Phase 5 is re-run after Phases 6 and 7 so the same charts reflect the latest state of
-the pipeline rather than requiring separate reporting runs.
+The benchmark gap uses the same `overall_quality_pass` metric on both sides so the
+comparison is methodologically valid (not a conjunctive pass rate vs. an arithmetic mean).
+Phase 6 is re-run after Phase 7 so the same charts reflect the latest state.
 
 ---
 
-### Phase 6 — Prompt Correction & Re-evaluation
+### Phase 7 — Prompt Correction & Re-evaluation
 
-**What it does:** Re-runs Phases 1–4 using the `human_feedback` prompt strategy, which
-contains revised prompts targeting the failure modes identified in Phase 3. Produces a
-`ComparisonReport` with before/after failure rates and quality pass rates per mode.
+**What it does:** Re-runs Phases 1, 2, 4, 5 using the `human_feedback` prompt strategy,
+which contains revised prompts targeting the failure modes identified in Phase 4. Key
+improvements over a static correction approach:
 
-**Rationale:** The failure labels from Phase 3 tell you *what* is failing; Phase 6 closes
+- **Data-driven:** failure rates from Phase 4 are injected into generation prompts so
+  the corrected run targets the specific modes that actually failed, not a generic
+  "write better" instruction.
+- **Iterative:** re-runs up to `--max-iterations` (default 3) until all three absolute
+  targets are simultaneously met: failure ≤ 15%, quality pass ≥ 80%, improvement ≥ 80%.
+- **Diversity check:** Jaccard similarity guard flags if corrected answers are near-copies
+  of the baseline.
+
+Produces a `ComparisonReport` with before/after failure rates, quality pass rates,
+improvement percentage, iterations run, and diversity score.
+
+**Rationale:** The failure labels from Phase 4 tell you *what* is failing; Phase 7 closes
 the loop by testing whether targeted prompt changes actually fix those failures. Running
 the corrected prompts through the full evaluation stack (not just eyeballing outputs)
-gives an objective, quantified answer. The 80% improvement target makes the success
-criterion explicit rather than subjective. Using the same judge infrastructure as the
+gives an objective, quantified answer. Using the same judge infrastructure as the
 baseline ensures the comparison is apples-to-apples.
-
----
-
-### Phase 7 — Benchmark Comparison
-
-**What it does:** Loads 50 samples from the `dipenbhuva/home-diy-repair-qa` HuggingFace
-dataset, maps them to the `QAPair` schema, and runs the same Phase 4 quality judge on
-them. Produces a `BenchmarkReport` comparing benchmark pass rates against generated data
-pass rates across all eight quality dimensions, and reports an overall calibration gap.
-
-**Rationale:** Internal quality metrics only tell you how generated data compares to
-itself. Calibrating against a real-world dataset answers a harder question: does the
-judge's quality bar correspond to real-world quality? A large negative gap (benchmark
-scoring lower than generated data) indicates either that the benchmark data genuinely
-lacks the required fields, or that the judge criteria are mis-calibrated. Either finding
-is useful — it either validates the generation pipeline or prompts a review of the judge
-prompts.
 
 ---
 
@@ -190,8 +205,8 @@ prompts.
 
 The pipeline makes two distinct types of LLM calls with different cost profiles:
 
-- **Generation** (Phase 1, Phase 6): long outputs (~500 tokens), quality-sensitive — benefits from a capable model
-- **Judging** (Phases 3, 4, 7): single-token outputs (`0` or `1`), high volume — benefits from a fast, cheap model
+- **Generation** (Phase 1, Phase 7): long outputs (~500 tokens), quality-sensitive — benefits from a capable model
+- **Judging** (Phases 3, 4, 5): single-token outputs (`0` or `1`), high volume — benefits from a fast, cheap model
 
 ### Per-run cost estimate (50 samples)
 
@@ -221,7 +236,7 @@ LLM_JUDGE_RATE_LIMIT_DELAY=0.0
 ### When to upgrade the generation model
 
 Switch to `llama-3.3-70b-versatile` or `gpt-4o-mini` if Phase 2 structural validation
-drops below 90% or Phase 4 quality pass rates are consistently low — those are signals
+drops below 90% or Phase 5 quality pass rates are consistently low — those are signals
 that the 8B model is struggling with schema compliance or content depth, and the ~10×
 cost increase is justified.
 
@@ -232,32 +247,34 @@ cost increase is justified.
 | Metric | Target |
 |---|---|
 | Minimum dataset size per run | ≥ 50 Q&A pairs |
-| Baseline failure rate (Phase 3) | ≥ 15% (establishes a measurable problem to correct) |
-| Post-correction failure rate reduction (Phase 6) | > 80% vs baseline |
-| Overall quality pass rate — all 8 dimensions (Phase 4) | ≥ 80% |
-| Benchmark calibration pass rate (Phase 7) | ≥ 95% on benchmark items |
+| Benchmark calibration pass rate (Phase 3) | ≥ 95% on benchmark items |
+| Baseline failure rate (Phase 4) | ≥ 15% (establishes a measurable problem to correct) |
+| Overall quality pass rate — all 8 dimensions (Phase 5) | ≥ 80% |
+| Post-correction failure rate (Phase 7) | ≤ 15% |
+| Post-correction quality pass rate (Phase 7) | ≥ 80% |
+| Post-correction failure rate reduction (Phase 7) | ≥ 80% vs baseline |
 
 ---
 
 ## Output Files
 
-Each run writes to `output/<batch-label>/`. Phase 6 writes its corrected-run output to a `corrected/` subdirectory.
+Each run writes to `output/<batch-label>/`. Phase 7 writes its corrected-run output to a `corrected/` subdirectory.
 
 | File | Written by | Contents |
 |---|---|---|
 | `generation_results.jsonl` | Phase 1 | All generated items including failures |
 | `structurally_valid_qa_pairs.json` | Phase 2 | Pydantic-valid items only |
 | `validation_summary.json` | Phase 2 | Total/valid/invalid counts and common errors |
-| `failure_labeled_data.{csv,json}` | Phase 3 | 6 binary failure flags per item |
-| `quality_eval_data.{csv,json}` | Phase 4 | 8 quality dimension scores per item |
-| `analysis_report.json` | Phase 5 | Aggregated rates, thresholds met, problematic trace_ids |
-| `corrected/before_after_comparison.json` | Phase 6 | Improvement % and per-mode deltas |
-| `benchmark_eval.csv` | Phase 7 | Per-item quality scores on benchmark set |
-| `benchmark_report.json` | Phase 7 | Calibration pass/fail, generated-vs-benchmark gaps |
+| `benchmark_eval.csv` | Phase 3 | Per-item quality scores on benchmark set |
+| `benchmark_report.json` | Phase 3 | Calibration pass/fail and per-dimension rates |
+| `failure_labeled_data.{csv,json}` | Phase 4 | 6 binary failure flags per item |
+| `quality_eval_data.{csv,json}` | Phase 5 | 8 quality dimension scores per item |
+| `analysis_report.json` | Phase 6 | Aggregated rates, thresholds met, benchmark gap, problematic trace_ids |
+| `corrected/before_after_comparison.json` | Phase 7 | Improvement %, iterations run, diversity score, per-mode deltas |
 
 ---
 
-## Failure Modes Reference (Phase 3)
+## Failure Modes Reference (Phase 4)
 
 Six binary flags assigned per sample by the LLM judge:
 
@@ -274,7 +291,7 @@ Criteria are defined in `failure_modes/<name>.yaml`. Add a new file to introduce
 
 ---
 
-## Quality Dimensions Reference (Phase 4)
+## Quality Dimensions Reference (Phase 5)
 
 Eight pass/fail scores assigned per sample by the LLM judge:
 
@@ -305,11 +322,11 @@ src/
 │
 ├── phase1_generation.py      # LLM generation via Instructor
 ├── phase2_validation.py      # Structural validation
-├── phase3_failure_labeling.py # LLM-as-Judge: 6 failure modes
-├── phase4_quality_eval.py    # LLM-as-Judge: 8 quality dimensions
-├── phase5_analysis.py        # Analysis, visualizations, reports
-├── phase6_correction.py      # Prompt correction & re-evaluation
-├── phase7_benchmark.py       # Benchmark dataset comparison
+├── phase3_benchmark.py       # Judge calibration against real-world benchmark
+├── phase4_failure_labeling.py # LLM-as-Judge: 6 failure modes
+├── phase5_quality_eval.py    # LLM-as-Judge: 8 quality dimensions
+├── phase6_analysis.py        # Analysis, visualizations, reports + benchmark gap
+├── phase7_correction.py      # Data-driven prompt correction with iterative loop
 │
 ├── prompts/                  # Prompt templates organised by strategy
 │   ├── zero_shot/            # 5 category YAMLs
@@ -317,12 +334,12 @@ src/
 │   ├── chain_of_thought/
 │   └── human_feedback/       # Corrected prompts targeting observed failures
 │
-├── failure_modes/            # One YAML per failure mode (Phase 3)
+├── failure_modes/            # One YAML per failure mode (Phase 4)
 │   ├── incomplete_answer.yaml
 │   ├── safety_violations.yaml
 │   └── ...
 │
-├── quality_dimensions/       # One YAML per quality dimension (Phase 4)
+├── quality_dimensions/       # One YAML per quality dimension (Phase 5)
 │   ├── answer_coherence.yaml
 │   ├── step_actionability.yaml
 │   └── ...

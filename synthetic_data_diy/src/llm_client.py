@@ -124,6 +124,31 @@ def instructor_complete(
             delay *= _BACKOFF_MULTIPLIER
 
 
+_JUDGE_SYSTEM_PROMPT = (
+    "You are a quality evaluator for DIY repair content. "
+    "Respond with exactly one digit: 0 or 1."
+)
+
+
+def judge_binary(prompt: str, model: str, default_on_error: int = 0) -> int:
+    """Call the judge endpoint and return 0 or 1.
+
+    default_on_error controls which side to fail safe:
+      - 0 (quality eval) — unknown → assume fail, tighten quality bar
+      - 1 (failure labeling) — unknown → assume failure present, conservative label
+    """
+    messages = [
+        {"role": "system", "content": _JUDGE_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    try:
+        raw = chat_complete(messages, model=model, temperature=0.1, max_tokens=10, use_judge_client=True)
+        digit = raw.strip()[0] if raw.strip() else ""
+        return int(digit) if digit in ("0", "1") else default_on_error
+    except Exception:
+        return default_on_error
+
+
 def chat_complete(
     messages: list[dict],
     model: str,

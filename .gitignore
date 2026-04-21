@@ -15,11 +15,11 @@ wheels/
 **/CLAUDE.md
 
 #
+.env
 **/debug_*
 
 # Virtual environments
 .venv
-
 
 # macOS
 .DS_Store

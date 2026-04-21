@@ -14,6 +14,26 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Core Q&A schema
 # ---------------------------------------------------------------------------
 
+def qa_format_kwargs(qa: "QAPair", category: str = "") -> dict:
+    """Return formatted QAPair fields for use in prompt .format() calls.
+
+    Both failure-labeling and quality-eval prompts share the same 7-field
+    interpolation; quality-eval additionally passes {category}.
+    """
+    kwargs = dict(
+        question=qa.question,
+        answer=qa.answer,
+        equipment_problem=qa.equipment_problem,
+        tools=", ".join(qa.tools_required),
+        steps="\n".join(f"{i+1}. {s}" for i, s in enumerate(qa.steps)),
+        safety_info=qa.safety_info,
+        tips="\n".join(f"- {t}" for t in qa.tips),
+    )
+    if category:
+        kwargs["category"] = category
+    return kwargs
+
+
 class QAPair(BaseModel):
     question: str = Field(..., min_length=10, max_length=500)
     answer: str = Field(..., min_length=20, max_length=2000)
@@ -141,7 +161,18 @@ class QualityEvalResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Phase 5: Analysis summary
+# Phase 3: Benchmark calibration report
+# ---------------------------------------------------------------------------
+
+class BenchmarkReport(BaseModel):
+    benchmark_samples_evaluated: int
+    benchmark_quality_pass_rate: float
+    calibration_passed: bool              # True if pass rate >= 95% — judge is trustworthy
+    benchmark_dimension_rates: dict[str, float]  # per-dimension pass rates; used by Phase 6 for gap analysis
+
+
+# ---------------------------------------------------------------------------
+# Phase 6: Analysis summary
 # ---------------------------------------------------------------------------
 
 class AnalysisSummary(BaseModel):
@@ -152,30 +183,28 @@ class AnalysisSummary(BaseModel):
     quality_pass_rates_by_dimension: dict[str, float]
     overall_quality_pass_rate: float
     thresholds_met: dict[str, bool]
-    most_problematic_items: list[str]  # trace_ids with 3+ failures
+    most_problematic_items: list[str]       # trace_ids with 3+ failures
+    # Benchmark gap — populated when Phase 3 benchmark_eval.csv is present
+    overall_benchmark_gap: Optional[float] = None   # benchmark_pass_rate − generated_pass_rate (apples-to-apples)
+    benchmark_dimension_gaps: Optional[dict[str, float]] = None  # per-dimension gaps
 
 
 # ---------------------------------------------------------------------------
-# Phase 6: Before/after comparison
+# Phase 7: Before/after correction comparison
 # ---------------------------------------------------------------------------
+
+# Absolute quality targets (derived from project spec)
+CORRECTION_TARGET_FAILURE_RATE: float = 0.15   # corrected failure rate must be ≤ 15%
+CORRECTION_TARGET_QUALITY_PASS: float = 0.80   # corrected quality pass rate must be ≥ 80%
+CORRECTION_TARGET_IMPROVEMENT: float = 80.0    # relative failure reduction must be ≥ 80%
 
 class ComparisonReport(BaseModel):
     baseline_failure_rate: float
     corrected_failure_rate: float
-    improvement_pct: float  # (baseline - corrected) / baseline * 100
-    target_met: bool        # improvement_pct >= 80
+    improvement_pct: float          # (baseline − corrected) / baseline * 100
+    target_met: bool                # corrected_failure_rate ≤ 15% AND quality_pass ≥ 80% AND improvement ≥ 80%
     per_mode_delta: dict[str, float]
     baseline_quality_pass_rate: float
     corrected_quality_pass_rate: float
-
-
-# ---------------------------------------------------------------------------
-# Phase 7: Benchmark calibration report
-# ---------------------------------------------------------------------------
-
-class BenchmarkReport(BaseModel):
-    benchmark_samples_evaluated: int
-    benchmark_quality_pass_rate: float
-    calibration_passed: bool  # >= 95% pass rate
-    generated_vs_benchmark: dict[str, float]  # dimension -> gap
-    overall_gap: float
+    iterations_run: int = 1         # how many correction iterations were needed
+    diversity_score: float = 1.0    # fraction of answer pairs with Jaccard similarity ≤ 0.8 (1.0 = fully diverse)

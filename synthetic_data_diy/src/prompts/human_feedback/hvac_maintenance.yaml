@@ -1,7 +1,7 @@
 category: hvac_maintenance
 
 # Corrected based on observed failure modes.
-# Targets: poor_quality_tips (20% failure), safety_specificity, category_accuracy
+# Targets: step_actionability, poor_quality_tips, safety_specificity, category_accuracy
 
 system: >-
   You are a certified HVAC master technician with 20 years of field experience.
@@ -17,14 +17,17 @@ user: |
     "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
     "equipment_problem": "<concise HVAC-specific problem description, 5-200 chars>",
     "tools_required": ["<tool 1>", "<tool 2>", ...],
-    "steps": ["<step 1>", "<step 2>", "<step 3>", ...],
-    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. 'high-voltage capacitor', 'carbon monoxide', 'refrigerant under pressure') + the exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", "<step 5>", ...],
+    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. 'high-voltage capacitor', 'carbon monoxide from cracked heat exchanger', 'refrigerant under 300 PSI pressure') + the exact protective action + consequence if ignored. Minimum 80 chars.>",
     "tips": ["<REQUIRED: a concrete, non-obvious tip a homeowner would not find in the manual — include specific measurements, model-number lookups, timing, or part names. NOT generic advice like 'be careful' or 'read the manual'.>"]
   }
 
   Rules:
   - tools_required: homeowner-accessible tools costing <$50 each
-  - steps: at least 3 ordered, specific steps with action verbs (not 'check' or 'look')
+  - steps: MINIMUM 5 steps. Each step MUST:
+      • Start with a strong action verb: slide, remove, replace, press, set, turn, measure, clean, tape, seal, tighten, insert, disconnect — NOT "check", "look", "ensure", "verify", "make sure", "inspect", "see if", or "be careful"
+      • Name the exact component or tool (e.g. "Slide the 16x20x1 filter into the slot with the airflow arrow pointing toward the blower" not "Insert the filter")
+      • Be specific enough to execute without guessing (include filter size, temperature setting, run time, or observable result)
   - safety_info: MUST name the specific hazard — do NOT write vague phrases like "exercise caution" or "be safe"
   - tips: MUST be task-specific and actionable — include numbers, part names, or timing where relevant
   - Do NOT wrap JSON in markdown code fences.

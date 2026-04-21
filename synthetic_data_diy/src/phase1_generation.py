@@ -16,18 +16,22 @@ from prompts import load_prompt_templates
 
 
 class DIYDatasetGenerator:
-    def __init__(self, generation_model: str, strategy: str, batch_id: str, batch_label: str):
+    def __init__(self, generation_model: str, strategy: str, batch_id: str, batch_label: str, additional_context: str = ""):
         self.model = generation_model
         self.strategy = strategy
         self.batch_id = batch_id
         self.batch_label = batch_label
+        self.additional_context = additional_context
         self.templates = load_prompt_templates(strategy)
 
     def generate_single(self, template: dict) -> GenerationResult:
         trace_id = str(uuid.uuid4())
+        user_content = template["user"]
+        if self.additional_context:
+            user_content = f"{self.additional_context}\n\n{user_content}"
         messages = [
             {"role": "system", "content": template["system"]},
-            {"role": "user", "content": template["user"]},
+            {"role": "user", "content": user_content},
         ]
         try:
             qa: QAPair = instructor_complete(
@@ -119,6 +123,7 @@ def run_generation_phase(
     strategy: str = "zero_shot",
     batch_label: str = "",
     debug: bool = False,
+    additional_context: str = "",
 ) -> list[GenerationResult]:
     batch_id = str(uuid.uuid4())
 
@@ -127,6 +132,7 @@ def run_generation_phase(
         strategy=strategy,
         batch_id=batch_id,
         batch_label=batch_label,
+        additional_context=additional_context,
     )
     results = generator.generate_batch(num_samples)
 

@@ -6,6 +6,7 @@ Generation and judge models can point at different providers/endpoints, e.g.
 OpenAI for generation and a local Ollama instance for low-cost bulk judging.
 """
 
+import functools
 import os
 from dataclasses import dataclass
 
@@ -29,6 +30,7 @@ class Settings:
     judge_rate_limit_delay: float
 
 
+@functools.lru_cache(maxsize=None)
 def get_settings() -> Settings:
     # Generation settings
     base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")

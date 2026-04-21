@@ -1,21 +1,21 @@
 """
-Phase 4: Quality Evaluation (LLM-as-Judge)
+Phase 5: Quality Evaluation (LLM-as-Judge)
 Scores each Q&A pair across 8 quality dimensions defined in YAML config files.
 
+Runs after Phase 4 failure labeling; uses the same judge infrastructure confirmed
+trustworthy by Phase 3 benchmark calibration.
 Quality dimension configs live in quality_dimensions/<name>.yaml (one file per dimension).
 Add a new file to introduce a new dimension — no Python changes needed.
 """
 
-import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
 import yaml
 
-from config import get_settings
-from llm_client import chat_complete
-from schema import QAPair, QualityEvalResult, ValidatedResult
+from llm_client import judge_binary
+from schema import QualityEvalResult, ValidatedResult, qa_format_kwargs
 
 # Default config directory relative to this file
 DEFAULT_QUALITY_DIMS_DIR = Path(__file__).parent / "quality_dimensions"
@@ -61,7 +61,7 @@ def load_quality_dimensions(config_dir: Path = DEFAULT_QUALITY_DIMS_DIR) -> list
     return dims
 
 
-# Module-level constant — loaded once; mirrors the pattern in phase3_failure_labeling.py
+# Module-level constant — loaded once; mirrors the pattern in phase4_failure_labeling.py
 QUALITY_DIMENSIONS: list[QualityDimension] = load_quality_dimensions()
 
 
@@ -69,38 +69,16 @@ class QualityEvaluator:
     def __init__(self, judge_model: str):
         self.model = judge_model
 
-    def _judge_dimension(self, dim: QualityDimension, qa: QAPair, category: str) -> int:
-        prompt = dim.prompt_template.format(
-            question=qa.question,
-            answer=qa.answer,
-            equipment_problem=qa.equipment_problem,
-            tools=", ".join(qa.tools_required),
-            steps="\n".join(f"{i+1}. {s}" for i, s in enumerate(qa.steps)),
-            safety_info=qa.safety_info,
-            tips="\n".join(f"- {t}" for t in qa.tips),
-            category=category,
-        )
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a quality evaluator for DIY repair content. Respond with exactly one digit: 0 or 1.",
-            },
-            {"role": "user", "content": prompt},
-        ]
-        try:
-            raw = chat_complete(messages, model=self.model, temperature=0.1, max_tokens=10, use_judge_client=True)
-            digit = raw.strip()[0]
-            return int(digit) if digit in ("0", "1") else 0
-        except Exception:
-            return 0  # default to fail on error
-
     def evaluate(self, result: ValidatedResult) -> QualityEvalResult:
         qa = result.qa_pair
-        scores: dict[str, int] = {}
-        for dim in QUALITY_DIMENSIONS:
-            scores[dim.name] = self._judge_dimension(dim, qa, result.category)
-            time.sleep(0.15)
-
+        scores: dict[str, int] = {
+            dim.name: judge_binary(
+                dim.prompt_template.format(**qa_format_kwargs(qa, result.category)),
+                self.model,
+                default_on_error=0,
+            )
+            for dim in QUALITY_DIMENSIONS
+        }
         overall_pass = 1 if all(v == 1 for v in scores.values()) else 0
         return QualityEvalResult(
             trace_id=result.trace_id,
@@ -124,7 +102,6 @@ def run_quality_eval_phase(
         eval_results.append(eval_result)
         dims_failed = [d.name for d in QUALITY_DIMENSIONS if getattr(eval_result, d.name) == 0]
         print("FAIL: " + ", ".join(dims_failed) if dims_failed else "PASS (all 8)")
-        time.sleep(get_settings().rate_limit_delay)
 
     rows = [r.model_dump() for r in eval_results]
     df = pd.DataFrame(rows)

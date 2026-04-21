@@ -6,9 +6,19 @@ Usage:
   python main.py --samples 20 --prompt-strategy few_shot --batch-label few-shot-run1
   python main.py --prompt-strategy chain_of_thought --batch-label cot-run1
   python main.py --phase 1 --samples 10              # Phase 1 only
-  python main.py --phase 1-5                          # Stop after analysis
+  python main.py --phase 1-6                          # Stop after analysis
+  python main.py --phase 7 --batch-label my-run-1    # Correction only (requires phases 4-5 output)
   python main.py --debug                              # Write JSON instead of JSONL
   python main.py stats                                # Print summary from existing output files
+
+Pipeline phases (in order):
+  1  Generation             — LLM generates Q&A pairs
+  2  Structural Validation  — Pydantic schema gate
+  3  Benchmark Calibration  — judge verified against real-world dataset BEFORE use
+  4  Failure Labeling       — LLM-as-Judge: 6 binary failure modes
+  5  Quality Evaluation     — LLM-as-Judge: 8 quality dimensions
+  6  Analysis               — visualizations + apples-to-apples benchmark gap
+  7  Prompt Correction      — data-driven re-run with iterative improvement loop
 
 Prompt strategies:
   zero_shot        Minimal instructions, no examples (default)
@@ -67,9 +77,9 @@ def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
             return
         for name, fname in [
             ("Validation summary", "validation_summary.json"),
+            ("Benchmark report", "benchmark_report.json"),
             ("Analysis report", "analysis_report.json"),
             ("Before/after comparison", "corrected/before_after_comparison.json"),
-            ("Benchmark report", "benchmark_report.json"),
         ]:
             path = run_dir / fname
             if path.exists():
@@ -100,15 +110,20 @@ def main() -> None:
     )
     parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats'")
     parser.add_argument("--samples", type=int, default=50, help="Q&A pairs to generate (default: 50)")
-    parser.add_argument("--generation-model", type=str, default=None, dest="generation_model", help="Generation model override (default: LLM_MODEL from .env)")
-    parser.add_argument("--judge-model", type=str, default=None, help="LLM-as-Judge model override for Phases 3, 4, 7 (default: LLM_JUDGE_MODEL from .env, falls back to --model)")
-    parser.add_argument("--phase", type=str, default="1-7", help="Phase range to run, e.g. '1-5', '6', '7' (default: 1-7)")
+    parser.add_argument("--generation-model", type=str, default=None, dest="generation_model",
+                        help="Generation model override (default: LLM_MODEL from .env)")
+    parser.add_argument("--judge-model", type=str, default=None, dest="judge_model",
+                        help="LLM-as-Judge model override for Phases 3, 4, 5 (default: LLM_JUDGE_MODEL from .env)")
+    parser.add_argument("--phase", type=str, default="1-7",
+                        help="Phase range to run, e.g. '1-6', '3', '7' (default: 1-7)")
     parser.add_argument("--prompt-strategy", type=str, default="zero_shot",
                         choices=["zero_shot", "few_shot", "chain_of_thought"],
                         help="Prompt strategy for Phase 1 (default: zero_shot)")
     parser.add_argument("--batch-label", type=str, default=None,
                         help="Human-readable label for this run, used as output subdirectory name. "
                              "Defaults to '<strategy>-<timestamp>'.")
+    parser.add_argument("--max-iterations", type=int, default=3, dest="max_iterations",
+                        help="Maximum correction iterations in Phase 7 (default: 3)")
     parser.add_argument("--output-dir", type=str, default="output", help="Base output directory (default: output)")
     parser.add_argument("--debug", action="store_true", help="Write output as pretty-printed JSON instead of JSONL")
 
@@ -144,6 +159,7 @@ def main() -> None:
     print(f"Phases          : {phase_start}–{phase_end}")
     print(f"Prompt strategy : {strategy}")
     print(f"Batch label     : {batch_label}")
+    print(f"Max iterations  : {args.max_iterations} (Phase 7)")
     print(f"Output dir      : {output_dir.absolute()}")
 
     generation_results = None
@@ -172,70 +188,59 @@ def main() -> None:
             print(f"Loaded {len(generation_results)} generation results from disk.")
         valid_results, _ = run_validation_phase(generation_results, output_dir)
 
-    # ── Phase 3: Failure Labeling ─────────────────────────────────────────
+    # ── Phase 3: Benchmark Calibration ───────────────────────────────────
+    # Runs the judge on real-world benchmark data to verify it is trustworthy
+    # BEFORE it is used to evaluate generated data in Phases 4 and 5.
     if phase_start <= 3 <= phase_end:
-        _section("PHASE 3 — Failure Labeling (LLM-as-Judge, 6 modes)")
+        _section("PHASE 3 — Benchmark Calibration (judge verification)")
+        from phase3_benchmark import run_benchmark_phase
+        run_benchmark_phase(
+            judge_model=judge_model,
+            output_dir=output_dir,
+            num_samples=50,
+        )
+
+    # ── Phase 4: Failure Labeling ─────────────────────────────────────────
+    if phase_start <= 4 <= phase_end:
+        _section("PHASE 4 — Failure Labeling (LLM-as-Judge, 6 modes)")
         from phase2_validation import load_valid_data
-        from phase3_failure_labeling import run_failure_labeling_phase
+        from phase4_failure_labeling import run_failure_labeling_phase
         if valid_results is None:
             valid_results = load_valid_data(output_dir)
         run_failure_labeling_phase(valid_results, judge_model, output_dir)
 
-    # ── Phase 4: Quality Evaluation ───────────────────────────────────────
-    if phase_start <= 4 <= phase_end:
-        _section("PHASE 4 — Quality Evaluation (LLM-as-Judge, 8 dimensions)")
+    # ── Phase 5: Quality Evaluation ───────────────────────────────────────
+    if phase_start <= 5 <= phase_end:
+        _section("PHASE 5 — Quality Evaluation (LLM-as-Judge, 8 dimensions)")
         from phase2_validation import load_valid_data
-        from phase4_quality_eval import run_quality_eval_phase
+        from phase5_quality_eval import run_quality_eval_phase
         if valid_results is None:
             valid_results = load_valid_data(output_dir)
         run_quality_eval_phase(valid_results, judge_model, output_dir)
 
-    # ── Phase 5: Analysis & Visualizations ───────────────────────────────
-    if phase_start <= 5 <= phase_end:
-        _section("PHASE 5 — Failure & Quality Analysis")
-        from phase5_analysis import run_analysis_phase
+    # ── Phase 6: Analysis & Visualizations ───────────────────────────────
+    # Auto-loads benchmark_eval.csv from Phase 3 for apples-to-apples gap.
+    if phase_start <= 6 <= phase_end:
+        _section("PHASE 6 — Failure & Quality Analysis")
+        from phase6_analysis import run_analysis_phase
         run_analysis_phase(output_dir=output_dir)
 
-    # ── Phase 6: Prompt Correction ────────────────────────────────────────
-    if phase_start <= 6 <= phase_end:
-        _section("PHASE 6 — Prompt Correction & Re-evaluation")
-        from phase6_correction import run_correction_phase
-        report = run_correction_phase(
+    # ── Phase 7: Prompt Correction ────────────────────────────────────────
+    if phase_start <= 7 <= phase_end:
+        _section("PHASE 7 — Prompt Correction & Re-evaluation")
+        from phase7_correction import run_correction_phase
+        run_correction_phase(
             num_samples=args.samples,
             generation_model=generation_model,
             judge_model=judge_model,
             baseline_dir=output_dir,
             corrected_dir=corrected_dir,
+            max_iterations=args.max_iterations,
         )
-        # Re-run Phase 5 to include corrected data in visualizations
-        from phase5_analysis import run_analysis_phase
+        # Re-run Phase 6 to include corrected data in visualizations
+        from phase6_analysis import run_analysis_phase
         print("\nUpdating visualizations with corrected data...")
         run_analysis_phase(output_dir=output_dir, corrected_dir=corrected_dir)
-
-    # ── Phase 7: Benchmark Comparison ────────────────────────────────────
-    if phase_start <= 7 <= phase_end:
-        _section("PHASE 7 — Benchmark Comparison")
-        from phase7_benchmark import run_benchmark_phase
-        bench_report = run_benchmark_phase(
-            judge_model=judge_model,
-            output_dir=output_dir,
-            num_samples=50,
-        )
-        # Update benchmark comparison visualization
-        from phase5_analysis import run_analysis_phase
-        import pandas as pd
-        from schema import QUALITY_DIMENSION_FIELDS as QUALITY_DIM_NAMES
-        bench_csv = output_dir / "benchmark_eval.csv"
-        bench_rates = None
-        if bench_csv.exists():
-            bdf = pd.read_csv(bench_csv)
-            bench_rates = {d: float(bdf[d].mean()) for d in QUALITY_DIM_NAMES if d in bdf.columns}
-        print("\nUpdating benchmark comparison chart...")
-        run_analysis_phase(
-            output_dir=output_dir,
-            corrected_dir=corrected_dir if corrected_dir.exists() else None,
-            benchmark_rates=bench_rates,
-        )
 
     # ── Final summary ─────────────────────────────────────────────────────
     _banner("PIPELINE COMPLETE")

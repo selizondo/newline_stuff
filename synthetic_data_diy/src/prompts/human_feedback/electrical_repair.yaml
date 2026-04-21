@@ -1,7 +1,7 @@
 category: electrical_repair
 
 # Corrected based on observed failure modes.
-# Targets: poor_quality_tips, safety_specificity, category_accuracy
+# Targets: step_actionability, poor_quality_tips, safety_specificity, category_accuracy
 
 system: >-
   You are a licensed master electrician with 20 years of residential experience.
@@ -17,14 +17,17 @@ user: |
     "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
     "equipment_problem": "<concise electrical-specific problem description, 5-200 chars>",
     "tools_required": ["<tool 1>", "<tool 2>", ...],
-    "steps": ["<step 1>", "<step 2>", "<step 3>", ...],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", "<step 5>", ...],
     "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. '120V live circuit', 'arc flash from double-tapped breaker', 'back-fed voltage from solar inverter') + the exact protective action + consequence if ignored. Minimum 80 chars.>",
     "tips": ["<REQUIRED: a concrete, non-obvious tip a homeowner would not know — include wire gauge numbers, breaker amp ratings, tester model names, or timing. NOT generic advice like 'turn off the breaker'.>"]
   }
 
   Rules:
   - tools_required: homeowner-accessible tools costing <$50 each (non-contact voltage tester, screwdrivers, etc.)
-  - steps: at least 3 ordered, specific steps with action verbs (not 'check' or 'look')
+  - steps: MINIMUM 5 steps. Each step MUST:
+      • Start with a strong action verb: flip, remove, insert, connect, pull, push, tighten, strip, wrap, replace, label, test, mount — NOT "check", "look", "ensure", "verify", "make sure", "inspect", "see if", or "be careful"
+      • Name the exact component or tool (e.g. "Insert the black hot wire into the brass terminal on the right side of the outlet" not "Connect the wires")
+      • Be specific enough to execute without guessing (include direction, wire colour, terminal name, or confirmation step)
   - safety_info: MUST name the specific electrical hazard — do NOT write vague phrases like "be careful" or "stay safe"
   - tips: MUST be task-specific and actionable — include wire sizes, breaker ratings, or tester readings where relevant
   - Do NOT wrap JSON in markdown code fences.
