@@ -23,6 +23,7 @@ Prompt strategies:
   zero_shot        Minimal instructions, no examples (default)
   few_shot         Detailed instructions + one worked example per category
   chain_of_thought Explicit reasoning steps before generating output
+  human_feedback   Corrected prompts targeting observed failure modes (RLHF baseline)
 
 Output is written to output/<batch-label>/ so every run is isolated.
 """
@@ -116,7 +117,7 @@ def main() -> None:
     parser.add_argument("--phase", type=str, default="1-7",
                         help="Phase range to run, e.g. '1-6', '3', '7' (default: 1-7)")
     parser.add_argument("--prompt-strategy", type=str, default="zero_shot",
-                        choices=["zero_shot", "few_shot", "chain_of_thought"],
+                        choices=["zero_shot", "few_shot", "chain_of_thought", "human_feedback"],
                         help="Prompt strategy for Phase 1 (default: zero_shot)")
     parser.add_argument("--batch-label", type=str, default=None,
                         help="Human-readable label for this run, used as output subdirectory name. "
@@ -195,6 +196,7 @@ def main() -> None:
             judge_model=judge_model,
             output_dir=output_dir,
             num_samples=50,
+            base_output=base_output,
         )
 
     # ── Phase 4: Failure Labeling ─────────────────────────────────────────

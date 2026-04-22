@@ -13,8 +13,9 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
+from pydantic import BaseModel, Field, create_model
 
-from llm_client import judge_binary
+from llm_client import judge_batch
 from schema import QualityEvalResult, ValidatedResult, qa_format_kwargs
 
 # Default config directory relative to this file
@@ -65,20 +66,48 @@ def load_quality_dimensions(config_dir: Path = DEFAULT_QUALITY_DIMS_DIR) -> list
 QUALITY_DIMENSIONS: list[QualityDimension] = load_quality_dimensions()
 
 
+def _strip_respond_line(text: str) -> str:
+    """Remove the trailing 'Respond with exactly one digit...' instruction line."""
+    lines = text.rstrip("\n").splitlines()
+    while lines and lines[-1].strip().startswith("Respond with"):
+        lines.pop()
+    return "\n".join(lines).rstrip()
+
+
+def _make_quality_batch_model(dim_names: list[str]) -> type[BaseModel]:
+    return create_model(
+        "QualityEvalBatch",
+        **{name: (int, Field(..., ge=0, le=1)) for name in dim_names},
+    )
+
+
 class QualityEvaluator:
     def __init__(self, judge_model: str):
         self.model = judge_model
+        self._batch_model = _make_quality_batch_model([d.name for d in QUALITY_DIMENSIONS])
+
+    def _build_batch_prompt(self, qa, category: str) -> str:
+        sections = []
+        for dim in QUALITY_DIMENSIONS:
+            criteria = _strip_respond_line(
+                dim.prompt_template.format(**qa_format_kwargs(qa, category))
+            )
+            sections.append(f"--- {dim.name} ---\n{criteria}")
+        body = "\n\n".join(sections)
+        footer = (
+            "Return a JSON object with these exact keys: "
+            + ", ".join(d.name for d in QUALITY_DIMENSIONS)
+            + ". Each value: 1 = PASS, 0 = FAIL."
+        )
+        return f"{body}\n\n{footer}"
 
     def evaluate(self, result: ValidatedResult) -> QualityEvalResult:
         qa = result.qa_pair
-        scores: dict[str, int] = {
-            dim.name: judge_binary(
-                dim.prompt_template.format(**qa_format_kwargs(qa, result.category)),
-                self.model,
-                default_on_error=0,
-            )
-            for dim in QUALITY_DIMENSIONS
-        }
+        try:
+            batch = judge_batch(self._build_batch_prompt(qa, result.category), self._batch_model, self.model)
+            scores = batch.model_dump()
+        except Exception:
+            scores = {d.name: 0 for d in QUALITY_DIMENSIONS}
         overall_pass = 1 if all(v == 1 for v in scores.values()) else 0
         return QualityEvalResult(
             trace_id=result.trace_id,
@@ -102,7 +131,7 @@ def run_quality_eval_phase(
         eval_result = evaluator.evaluate(result)
         eval_results.append(eval_result)
         dims_failed = [d.name for d in QUALITY_DIMENSIONS if getattr(eval_result, d.name) == 0]
-        print("FAIL: " + ", ".join(dims_failed) if dims_failed else "PASS (all 8)")
+        print("FAIL: " + ", ".join(dims_failed) if dims_failed else f"PASS (all {len(QUALITY_DIMENSIONS)})")
 
     rows = [r.model_dump() for r in eval_results]
     df = pd.DataFrame(rows)

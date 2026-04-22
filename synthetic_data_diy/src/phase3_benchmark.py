@@ -58,17 +58,53 @@ def _check_judge_connectivity(judge_model: str) -> None:
         ) from e
 
 
+def _calibration_cache_dir(base_output: Path, judge_model: str) -> Path:
+    """Shared cache directory for a given judge model, stored outside any batch."""
+    safe_name = judge_model.replace("/", "_").replace(":", "_").replace(" ", "_")
+    return base_output / "_calibration" / safe_name
+
+
+def _load_cached_calibration(cache_dir: Path, output_dir: Path) -> BenchmarkReport | None:
+    """Return a cached BenchmarkReport if one exists and passed, else None.
+
+    Also copies the cached CSV/JSON files into output_dir so Phase 6 can find them.
+    """
+    report_path = cache_dir / "benchmark_report.json"
+    if not report_path.exists():
+        return None
+    report = BenchmarkReport(**json.loads(report_path.read_text()))
+    if not report.calibration_passed:
+        return None
+    for fname in ("benchmark_eval.csv", "benchmark_eval.json", "benchmark_report.json"):
+        src = cache_dir / fname
+        if src.exists():
+            (output_dir / fname).write_bytes(src.read_bytes())
+    return report
+
+
 def run_benchmark_phase(
     judge_model: str,
     output_dir: Path,
     num_samples: int = MIN_BENCHMARK_SAMPLES,
+    base_output: Path | None = None,
 ) -> BenchmarkReport:
     """Evaluate benchmark items and verify judge calibration.
 
-    Saves benchmark_eval.csv and benchmark_report.json.
+    Results are cached in output/_calibration/<judge_model>/ so subsequent
+    batch runs with the same judge model skip the 400-call re-evaluation.
+
+    Saves benchmark_eval.csv and benchmark_report.json to output_dir.
     The benchmark_dimension_rates in the report are consumed by Phase 6 (analysis)
     for an apples-to-apples gap comparison against generated data.
     """
+    cache_dir = _calibration_cache_dir(base_output or output_dir.parent, judge_model)
+
+    cached = _load_cached_calibration(cache_dir, output_dir)
+    if cached is not None:
+        print(f"  Reusing cached calibration for '{judge_model}' (pass rate: {cached.benchmark_quality_pass_rate*100:.1f}%)")
+        print(f"  Cache: {cache_dir}")
+        print(f"  To force re-calibration, delete: {cache_dir}")
+        return cached
     try:
         from datasets import load_dataset
     except ImportError:
@@ -131,8 +167,6 @@ def run_benchmark_phase(
         time.sleep(get_settings().judge_rate_limit_delay)
 
     bench_df = pd.DataFrame([r.model_dump() for r in eval_results])
-    bench_df.to_csv(output_dir / "benchmark_eval.csv", index=False)
-    bench_df.to_json(output_dir / "benchmark_eval.json", orient="records", indent=2)
 
     benchmark_pass_rate = float(bench_df["overall_quality_pass"].mean())
     calibration_passed = benchmark_pass_rate >= CALIBRATION_PASS_THRESHOLD
@@ -147,8 +181,21 @@ def run_benchmark_phase(
         benchmark_dimension_rates=benchmark_dimension_rates,
     )
 
+    report_json = json.dumps(report.model_dump(), indent=2)
+
+    # Write to batch dir (consumed by Phase 6)
+    bench_df.to_csv(output_dir / "benchmark_eval.csv", index=False)
+    bench_df.to_json(output_dir / "benchmark_eval.json", orient="records", indent=2)
+    (output_dir / "benchmark_report.json").write_text(report_json)
+
+    # Cache if calibration passed so future batches skip re-evaluation
+    if calibration_passed:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        bench_df.to_csv(cache_dir / "benchmark_eval.csv", index=False)
+        bench_df.to_json(cache_dir / "benchmark_eval.json", orient="records", indent=2)
+        (cache_dir / "benchmark_report.json").write_text(report_json)
+
     report_path = output_dir / "benchmark_report.json"
-    report_path.write_text(json.dumps(report.model_dump(), indent=2))
 
     print("\n" + "=" * 50)
     print("BENCHMARK CALIBRATION REPORT")

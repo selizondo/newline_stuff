@@ -136,27 +136,29 @@ class FailureLabelResult(BaseModel):
 
 QUALITY_DIMENSION_FIELDS: list[str] = [
     "answer_coherence",
-    "step_actionability",
-    "tool_realism",
-    "safety_specificity",
-    "tip_usefulness",
-    "problem_answer_alignment",
+    "answer_completeness",
     "appropriate_scope",
     "category_accuracy",
+    "problem_answer_alignment",
+    "safety_specificity",
+    "step_actionability",
+    "tip_usefulness",
+    "tool_realism",
 ]
 
 
 class QualityEvalResult(BaseModel):
     trace_id: str
     category: str
-    answer_coherence: int = Field(..., ge=0, le=1)       # Q1
-    step_actionability: int = Field(..., ge=0, le=1)     # Q2
-    tool_realism: int = Field(..., ge=0, le=1)           # Q3
-    safety_specificity: int = Field(..., ge=0, le=1)     # Q4
-    tip_usefulness: int = Field(..., ge=0, le=1)         # Q5
-    problem_answer_alignment: int = Field(..., ge=0, le=1)  # Q6
-    appropriate_scope: int = Field(..., ge=0, le=1)      # Q7
-    category_accuracy: int = Field(..., ge=0, le=1)      # Q8
+    answer_coherence: int = Field(..., ge=0, le=1)          # Q1
+    answer_completeness: int = Field(..., ge=0, le=1)        # Q9
+    appropriate_scope: int = Field(..., ge=0, le=1)          # Q7
+    category_accuracy: int = Field(..., ge=0, le=1)          # Q8
+    problem_answer_alignment: int = Field(..., ge=0, le=1)   # Q6
+    safety_specificity: int = Field(..., ge=0, le=1)         # Q4
+    step_actionability: int = Field(..., ge=0, le=1)         # Q2
+    tip_usefulness: int = Field(..., ge=0, le=1)             # Q5
+    tool_realism: int = Field(..., ge=0, le=1)               # Q3
     overall_quality_pass: int  # 1 if ALL dimensions pass
 
 

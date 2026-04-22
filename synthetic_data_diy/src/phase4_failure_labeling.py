@@ -12,8 +12,9 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
+from pydantic import BaseModel, Field, create_model
 
-from llm_client import judge_binary
+from llm_client import judge_batch
 from schema import FAILURE_MODE_FIELDS, FailureLabelResult, ValidatedResult, qa_format_kwargs
 
 # Default config directory relative to this file
@@ -58,24 +59,50 @@ def load_failure_modes(config_dir: Path = DEFAULT_FAILURE_MODES_DIR) -> list[Fai
     return modes
 
 
+def _strip_respond_line(text: str) -> str:
+    """Remove the trailing 'Respond with exactly one digit...' instruction line."""
+    lines = text.rstrip("\n").splitlines()
+    while lines and lines[-1].strip().startswith("Respond with"):
+        lines.pop()
+    return "\n".join(lines).rstrip()
+
+
+def _make_failure_batch_model(mode_names: list[str]) -> type[BaseModel]:
+    return create_model(
+        "FailureLabelBatch",
+        **{name: (int, Field(..., ge=0, le=1)) for name in mode_names},
+    )
+
+
 class FailureLabeler:
     def __init__(self, judge_model: str, failure_modes: list[FailureMode], additional_context: str = ""):
         self.model = judge_model
         self.failure_modes = failure_modes
         self.additional_context = additional_context
+        self._batch_model = _make_failure_batch_model([m.name for m in failure_modes])
 
-    def _build_prompt(self, mode: FailureMode, qa) -> str:
-        prompt = mode.prompt_template.format(**qa_format_kwargs(qa))
+    def _build_batch_prompt(self, qa) -> str:
+        sections = []
+        for mode in self.failure_modes:
+            criteria = _strip_respond_line(mode.prompt_template.format(**qa_format_kwargs(qa)))
+            sections.append(f"--- {mode.name} ---\n{criteria}")
+        body = "\n\n".join(sections)
+        footer = (
+            "Return a JSON object with these exact keys: "
+            + ", ".join(m.name for m in self.failure_modes)
+            + ". Each value: 1 = failure present, 0 = not present."
+        )
         if self.additional_context:
-            prompt = f"{self.additional_context}\n\n{prompt}"
-        return prompt
+            return f"{self.additional_context}\n\n{body}\n\n{footer}"
+        return f"{body}\n\n{footer}"
 
     def evaluate(self, result: ValidatedResult) -> FailureLabelResult:
         qa = result.qa_pair
-        scores: dict[str, int] = {
-            mode.name: judge_binary(self._build_prompt(mode, qa), self.model, default_on_error=1)
-            for mode in self.failure_modes
-        }
+        try:
+            batch = judge_batch(self._build_batch_prompt(qa), self._batch_model, self.model)
+            scores = batch.model_dump()
+        except Exception:
+            scores = {m.name: 1 for m in self.failure_modes}
         failure_count = sum(scores.values())
         return FailureLabelResult(
             trace_id=result.trace_id,

@@ -1,0 +1,21 @@
+name: answer_completeness
+label: "Q9: Answer Completeness"
+threshold: 0.85
+prompt_template: |
+  Evaluate Q9 — Answer Completeness.
+
+  Question: {question}
+  Answer: {answer}
+  Steps: {steps}
+
+  The answer PASSES if it contains enough detail for a homeowner to complete the repair end to end:
+  - Covers all key stages of the repair (not just the first or final step)
+  - Does not stop short or skip over significant intermediate stages
+  - A homeowner could perform the repair using only the information given, without needing to look up additional guidance
+
+  The answer FAILS if:
+  - It describes part of the repair but omits major stages
+  - It relies on the reader already knowing how to do a key step
+  - It is so brief that a homeowner would be left guessing what to do next
+
+  Respond with exactly one digit: 1 if PASS, 0 if FAIL.

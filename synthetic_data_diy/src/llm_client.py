@@ -4,7 +4,7 @@ Works with OpenAI, Ollama (http://localhost:11434/v1), or any OpenAI-compatible 
 
 Maintains two independent cached clients:
   - generation client  → LLM_BASE_URL / LLM_API_KEY  (Phase 1 generation)
-  - judge client       → LLM_JUDGE_BASE_URL / LLM_JUDGE_API_KEY  (Phases 3, 4, 7)
+  - judge client       → LLM_JUDGE_BASE_URL / LLM_JUDGE_API_KEY  (Phases 3, 4, 5)
 """
 
 import time
@@ -26,6 +26,7 @@ _gen_rate_limit_delay: float | None = None
 
 # Judge client cache
 _judge_client: OpenAI | None = None
+_judge_instructor_client: instructor.Instructor | None = None
 _judge_rate_limit_delay: float | None = None
 
 # Defaults shared by instructor_complete and chat_complete
@@ -64,6 +65,14 @@ def get_instructor_client(settings: Settings | None = None) -> instructor.Instru
     if _gen_instructor_client is None:
         _gen_instructor_client = instructor.from_openai(get_client(settings))
     return _gen_instructor_client
+
+
+def get_judge_instructor_client(settings: Settings | None = None) -> instructor.Instructor:
+    """Return the cached Instructor-patched judge client (for batch structured evaluation)."""
+    global _judge_instructor_client
+    if _judge_instructor_client is None:
+        _judge_instructor_client = instructor.from_openai(get_judge_client(settings))
+    return _judge_instructor_client
 
 
 def _get_gen_rate_limit_delay() -> float:
@@ -129,6 +138,12 @@ _JUDGE_SYSTEM_PROMPT = (
     "Respond with exactly one digit: 0 or 1."
 )
 
+_JUDGE_BATCH_SYSTEM_PROMPT = (
+    "You are a quality evaluator for DIY repair content. "
+    "For each criterion, score 1 (pass/present) or 0 (fail/absent). "
+    "Return a JSON object with the exact keys specified."
+)
+
 
 def judge_binary(prompt: str, model: str, default_on_error: int = 0) -> int:
     """Call the judge endpoint and return 0 or 1.
@@ -147,6 +162,51 @@ def judge_binary(prompt: str, model: str, default_on_error: int = 0) -> int:
         return int(digit) if digit in ("0", "1") else default_on_error
     except Exception:
         return default_on_error
+
+
+def judge_batch(
+    prompt: str,
+    response_model: Type[T],
+    model: str,
+    max_retries: int = _DEFAULT_MAX_RETRIES,
+) -> T:
+    """Call the judge endpoint with Instructor to score all criteria in one call.
+
+    Uses the judge client/endpoint. Sleeps judge_rate_limit_delay after each
+    successful call. Retries on RateLimitError with exponential backoff.
+
+    Raises InstructorRetryException if the model cannot produce a valid response
+    after internal retries — callers should catch and apply a default.
+    """
+    client = get_judge_instructor_client()
+    rate_limit_delay = _get_judge_rate_limit_delay()
+    messages = [
+        {"role": "system", "content": _JUDGE_BATCH_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    delay = _DEFAULT_BACKOFF_DELAY
+    for attempt in range(max_retries + 1):
+        try:
+            result = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                response_model=response_model,
+                temperature=0.0,
+                max_tokens=200,
+                max_retries=_INSTRUCTOR_INTERNAL_RETRIES,
+            )
+            time.sleep(rate_limit_delay)
+            return result
+        except InstructorRetryException:
+            raise
+        except RateLimitError:
+            if attempt == max_retries:
+                print(f"\n  [rate limit] all {max_retries} retries exhausted — sleeping {_INTER_CYCLE_SLEEP:.0f}s before raising", flush=True)
+                time.sleep(_INTER_CYCLE_SLEEP)
+                raise
+            print(f"\n  [rate limit] waiting {delay:.0f}s before retry {attempt + 1}/{max_retries}...", end="", flush=True)
+            time.sleep(delay)
+            delay *= _BACKOFF_MULTIPLIER
 
 
 def chat_complete(
