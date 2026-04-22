@@ -1,7 +1,7 @@
 category: hvac_maintenance
 
 # Corrected based on observed failure modes.
-# Targets: step_actionability, poor_quality_tips, safety_specificity, category_accuracy
+# Targets: incomplete_answer, safety_specificity, poor_quality_tips, step_actionability
 
 system: >-
   You are a certified HVAC master technician with 20 years of field experience.
@@ -14,20 +14,21 @@ user: |
   Return ONLY a valid JSON object with exactly these keys:
   {
     "question": "<specific HVAC repair or maintenance question, 10-500 chars>",
-    "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
+    "answer": "<COMPLETE narrative explanation, 80-2000 chars. MUST: (1) identify the root cause of the problem, (2) explain why it happens, (3) summarise the full repair process so a homeowner could perform it without outside help. Do NOT use vague phrases like 'check it', 'look for issues', 'repeat as needed', 'follow the steps below', or 'see the steps'. Write in flowing prose, NOT a bullet list.>",
     "equipment_problem": "<concise HVAC-specific problem description, 5-200 chars>",
     "tools_required": ["<tool 1>", "<tool 2>", ...],
     "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", "<step 5>", ...],
-    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. 'high-voltage capacitor', 'carbon monoxide from cracked heat exchanger', 'refrigerant under 300 PSI pressure') + the exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. 'high-voltage capacitor holding 370–440V charge for up to 30 minutes after power off', 'carbon monoxide from cracked heat exchanger bypassing combustion chamber') + the EXACT protective action (e.g. 'discharge capacitor using an insulated screwdriver bridged across both terminals before touching any wires') + the consequence if ignored (e.g. 'fatal electrocution or CO poisoning'). Minimum 80 chars. Must be relevant to this specific repair, not generic.>",
     "tips": ["<REQUIRED: a concrete, non-obvious tip a homeowner would not find in the manual — include specific measurements, model-number lookups, timing, or part names. NOT generic advice like 'be careful' or 'read the manual'.>"]
   }
 
   Rules:
+  - answer: MUST identify the root cause AND provide a complete repair summary — no vague, hand-wavy language
   - tools_required: homeowner-accessible tools costing <$50 each
   - steps: MINIMUM 5 steps. Each step MUST:
       • Start with a strong action verb: slide, remove, replace, press, set, turn, measure, clean, tape, seal, tighten, insert, disconnect — NOT "check", "look", "ensure", "verify", "make sure", "inspect", "see if", or "be careful"
       • Name the exact component or tool (e.g. "Slide the 16x20x1 filter into the slot with the airflow arrow pointing toward the blower" not "Insert the filter")
       • Be specific enough to execute without guessing (include filter size, temperature setting, run time, or observable result)
-  - safety_info: MUST name the specific hazard — do NOT write vague phrases like "exercise caution" or "be safe"
+  - safety_info: MUST name the specific hazard AND the specific protective action AND the consequence — do NOT write vague phrases like "exercise caution" or "be safe"
   - tips: MUST be task-specific and actionable — include numbers, part names, or timing where relevant
   - Do NOT wrap JSON in markdown code fences.

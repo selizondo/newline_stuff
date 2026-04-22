@@ -8,7 +8,6 @@ Usage:
   python main.py --phase 1 --samples 10              # Phase 1 only
   python main.py --phase 1-6                          # Stop after analysis
   python main.py --phase 7 --batch-label my-run-1    # Correction only (requires phases 4-5 output)
-  python main.py --debug                              # Write JSON instead of JSONL
   python main.py stats                                # Print summary from existing output files
 
 Pipeline phases (in order):
@@ -125,7 +124,6 @@ def main() -> None:
     parser.add_argument("--max-iterations", type=int, default=3, dest="max_iterations",
                         help="Maximum correction iterations in Phase 7 (default: 3)")
     parser.add_argument("--output-dir", type=str, default="output", help="Base output directory (default: output)")
-    parser.add_argument("--debug", action="store_true", help="Write output as pretty-printed JSON instead of JSONL")
 
     args = parser.parse_args()
 
@@ -175,7 +173,6 @@ def main() -> None:
             output_dir=output_dir,
             strategy=strategy,
             batch_label=batch_label,
-            debug=args.debug,
         )
 
     # ── Phase 2: Structural Validation ───────────────────────────────────

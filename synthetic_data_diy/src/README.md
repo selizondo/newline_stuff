@@ -262,7 +262,7 @@ Each run writes to `output/<batch-label>/`. Phase 7 writes its corrected-run out
 
 | File | Written by | Contents |
 |---|---|---|
-| `generation_results.jsonl` | Phase 1 | All generated items including failures |
+| `generation_results.json` | Phase 1 | All generated items including failures |
 | `structurally_valid_qa_pairs.json` | Phase 2 | Pydantic-valid items only |
 | `validation_summary.json` | Phase 2 | Total/valid/invalid counts and common errors |
 | `benchmark_eval.csv` | Phase 3 | Per-item quality scores on benchmark set |

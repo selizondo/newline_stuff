@@ -11,7 +11,7 @@ from pathlib import Path
 from schema import QAPair, GenerationResult, ValidatedResult, ValidationSummary
 
 
-class DIYRepairValidator:
+class QAPairValidator:
     def _validate_one(
         self, result: GenerationResult
     ) -> tuple[bool, list[str], QAPair | None]:
@@ -72,7 +72,7 @@ def run_validation_phase(
     results: list[GenerationResult],
     output_dir: Path,
 ) -> tuple[list[ValidatedResult], ValidationSummary]:
-    validator = DIYRepairValidator()
+    validator = QAPairValidator()
     valid_results, summary = validator.validate_batch(results)
 
     print(f"Structural validation: {summary.total_valid}/{summary.total_generated} passed ({summary.validation_rate*100:.1f}%)")

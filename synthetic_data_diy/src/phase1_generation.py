@@ -95,25 +95,11 @@ class DIYDatasetGenerator:
 
 
 def load_generation_results(output_dir: Path) -> list[GenerationResult]:
-    """Load Phase 1 output from disk for use by downstream phases.
-
-    Accepts both generation_results.jsonl (standard) and generation_results.json (debug).
-    """
-    jsonl_file = output_dir / "generation_results.jsonl"
+    """Load Phase 1 output from disk for use by downstream phases."""
     json_file = output_dir / "generation_results.json"
-
-    if jsonl_file.exists():
-        return [
-            GenerationResult(**json.loads(line))
-            for line in jsonl_file.read_text().splitlines()
-            if line.strip()
-        ]
-    elif json_file.exists():
-        return [GenerationResult(**r) for r in json.loads(json_file.read_text())]
-    else:
-        raise FileNotFoundError(
-            f"Not found: {jsonl_file} or {json_file}. Run Phase 1 first."
-        )
+    if not json_file.exists():
+        raise FileNotFoundError(f"Not found: {json_file}. Run Phase 1 first.")
+    return [GenerationResult(**r) for r in json.loads(json_file.read_text())]
 
 
 def run_generation_phase(
@@ -122,7 +108,6 @@ def run_generation_phase(
     output_dir: Path,
     strategy: str = "zero_shot",
     batch_label: str = "",
-    debug: bool = False,
     additional_context: str = "",
 ) -> list[GenerationResult]:
     batch_id = str(uuid.uuid4())
@@ -139,15 +124,7 @@ def run_generation_phase(
     parsed = sum(1 for r in results if r.parse_error is None)
     print(f"\nGeneration complete: {parsed}/{len(results)} parsed ({parsed/len(results)*100:.1f}%)")
 
-    if debug:
-        out_file = output_dir / "generation_results.json"
-        out_file.write_text(
-            json.dumps([r.model_dump() for r in results], indent=2, ensure_ascii=False)
-        )
-    else:
-        out_file = output_dir / "generation_results.jsonl"
-        out_file.write_text(
-            "\n".join(json.dumps(r.model_dump(), ensure_ascii=False) for r in results) + "\n"
-        )
+    out_file = output_dir / "generation_results.json"
+    out_file.write_text(json.dumps([r.model_dump() for r in results], indent=2, ensure_ascii=False))
     print(f"Saved → {out_file}")
     return results

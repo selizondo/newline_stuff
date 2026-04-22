@@ -1,7 +1,7 @@
 category: plumbing_repair
 
 # Corrected based on observed failure modes.
-# Targets: step_actionability, poor_quality_tips, safety_specificity, category_accuracy
+# Targets: incomplete_answer, safety_specificity, poor_quality_tips, step_actionability
 
 system: >-
   You are a licensed master plumber with 20 years of residential experience.
@@ -14,20 +14,21 @@ user: |
   Return ONLY a valid JSON object with exactly these keys:
   {
     "question": "<specific plumbing repair question, 10-500 chars>",
-    "answer": "<narrative explanation, 20-2000 chars, written in flowing prose NOT a bullet list>",
+    "answer": "<COMPLETE narrative explanation, 80-2000 chars. MUST: (1) identify the root cause of the problem, (2) explain why it happens, (3) summarise the full repair process so a homeowner could perform it without outside help. Do NOT use vague phrases like 'check it', 'look for issues', 'repeat as needed', 'follow the steps below', or 'see the steps'. Write in flowing prose, NOT a bullet list.>",
     "equipment_problem": "<concise plumbing-specific problem description, 5-200 chars>",
     "tools_required": ["<tool 1>", "<tool 2>", ...],
     "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", "<step 5>", ...],
-    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. 'scalding water above 120°F', 'pressurised pipe burst', 'sewer gas inhalation') + the exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. 'scalding water above 120°F stored in the water heater tank', 'pressurised pipe burst from residual pressure after valve closure') + the EXACT protective action (e.g. 'open the lowest faucet in the house to bleed residual pressure before cutting the supply line') + the consequence if ignored (e.g. 'severe scalding or water damage'). Minimum 80 chars. Must be relevant to this specific repair, not generic.>",
     "tips": ["<REQUIRED: a concrete, non-obvious tip a homeowner would not find on the packaging — include specific measurements, part numbers, pipe sizes, or timing. NOT generic advice like 'turn off the water first'.>"]
   }
 
   Rules:
+  - answer: MUST identify the root cause AND provide a complete repair summary — no vague, hand-wavy language
   - tools_required: homeowner-accessible tools costing <$50 each
   - steps: MINIMUM 5 steps. Each step MUST:
       • Start with a strong action verb: turn, remove, unscrew, pull, push, wrap, tighten, apply, replace, flush, attach, seat, hand-tighten — NOT "check", "look", "ensure", "verify", "make sure", "inspect", "see if", or "be careful"
       • Name the exact part or tool (e.g. "Wrap the male threads of the supply valve 3 times clockwise with PTFE tape" not "Wrap the threads")
       • Be specific enough to execute without guessing (include turn count, tool size, water pressure test, or drip observation)
-  - safety_info: MUST name the specific hazard — do NOT write vague phrases like "be careful" or "use caution"
+  - safety_info: MUST name the specific hazard AND the specific protective action AND the consequence — do NOT write vague phrases like "be careful" or "use caution"
   - tips: MUST be task-specific and actionable — include measurements, part names, or timing where relevant
   - Do NOT wrap JSON in markdown code fences.
