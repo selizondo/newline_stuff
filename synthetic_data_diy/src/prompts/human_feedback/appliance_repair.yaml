@@ -1,34 +1,38 @@
 category: appliance_repair
 
-# Corrected based on observed failure modes.
+# Seeded from chain_of_thought + human_feedback corrections.
 # Targets: incomplete_answer, safety_specificity, poor_quality_tips, step_actionability
 
 system: >-
   You are a master appliance repair technician with 20 years of field experience.
-  You only answer questions about household appliances: washing machines, dryers,
-  dishwashers, refrigerators, ovens, microwaves, and similar appliances.
-  You do NOT cover HVAC systems, plumbing pipes, or electrical panels.
+  Before writing any repair guide, you reason systematically through the problem:
+  root cause, required tools, safety hazards, and the professional insight most
+  homeowners miss. Your final output reflects that careful thinking.
 user: |
-  Generate a realistic home appliance repair Q&A pair covering a common problem a homeowner might face.
+  Generate a complete, detailed home appliance repair Q&A pair using this reasoning process:
 
-  Return ONLY a valid JSON object with exactly these keys:
+  Think through each of these before writing your answer:
+  1. What specific appliance problem will this cover, and what is its root cause?
+  2. What tools does this repair actually require? Only include tools under $50 available at hardware stores.
+  3. What is the exact safety hazard — name the specific risk (voltage, capacitor charge, sharp edge) and the precise protective action the homeowner must take?
+  4. What is one non-obvious professional tip — a specific part name, measurement, or technique a homeowner would not find in the manual?
+  5. What are the ordered steps, each starting with a strong action verb naming the exact part?
+
+  After reasoning through the above, return ONLY a valid JSON object — do not include your reasoning in the output:
   {
     "question": "<specific appliance repair question, 10-500 chars>",
-    "answer": "<COMPLETE narrative explanation, 80-2000 chars. MUST: (1) identify the root cause of the problem, (2) explain why it happens, (3) summarise the full repair process so a homeowner could perform it without outside help. Do NOT use vague phrases like 'check it', 'look for issues', 'repeat as needed', 'follow the steps below', or 'see the steps'. Write in flowing prose, NOT a bullet list.>",
+    "answer": "<COMPLETE narrative of at least 3 paragraphs: (1) root cause and why it happens, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points. Must be detailed enough that a homeowner can perform the repair without outside help. Do NOT use vague phrases like 'check it', 'look for issues', 'repeat as needed', or 'follow the steps below'.>",
     "equipment_problem": "<concise appliance-specific problem description, 5-200 chars>",
     "tools_required": ["<tool 1>", "<tool 2>", ...],
     "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", "<step 5>", ...],
-    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. '120V AC shock risk from capacitor holding charge after unplug', 'sharp sheetmetal edge on drum access panel') + the EXACT protective action the homeowner must take (e.g. 'discharge capacitor with a 10k-ohm resistor before touching terminals') + the consequence if ignored (e.g. 'fatal electrocution'). Minimum 80 chars. Must be relevant to this specific repair, not generic.>",
-    "tips": ["<REQUIRED: a concrete, non-obvious tip a homeowner would not find in the manual — include specific part names, model-number lookups, measurements, or timing. NOT generic advice like 'be careful' or 'unplug first'.>"]
+    "safety_info": "<REQUIRED: name the SPECIFIC hazard (e.g. '120V AC shock from capacitor holding charge after unplug') + the EXACT protective action (e.g. 'discharge capacitor with a 10k-ohm resistor before touching terminals') + the consequence if ignored (e.g. 'fatal electrocution'). Minimum 80 chars.>",
+    "tips": ["<concrete, non-obvious tip — include specific part names, measurements, or timing. NOT generic advice like 'be careful' or 'unplug first'.>", "<second distinct actionable tip>"]
   }
 
   Rules:
-  - answer: MUST identify the root cause AND provide a complete repair summary — no vague, hand-wavy language
-  - tools_required: homeowner-accessible tools costing <$50 each
-  - steps: MINIMUM 5 steps. Each step MUST:
-      • Start with a strong action verb: disconnect, remove, unscrew, pull, insert, tighten, measure, replace, press, turn, lift, slide, clean, apply, reconnect — NOT "check", "look", "ensure", "verify", "make sure", "inspect", "see if", or "be careful"
-      • Name the exact part or tool being used (e.g. "Unscrew the two Phillips #2 screws holding the access panel" not "Remove the panel")
-      • Be specific enough to execute without guessing (include direction, quantity, or observable result where relevant)
-  - safety_info: MUST name the specific hazard AND the specific protective action AND the consequence — do NOT write vague phrases like "exercise caution" or "be careful"
-  - tips: MUST be task-specific and actionable — include numbers, part names, or timing where relevant
+  - answer: MUST identify the root cause AND provide a complete repair summary
+  - tools_required: homeowner-accessible tools costing <$50 each; no professional-grade or trade-only equipment
+  - steps: MINIMUM 5 steps. Each step MUST start with a strong action verb (disconnect, remove, unscrew, replace, tighten, measure) — NOT 'check', 'look', 'ensure', 'verify', 'inspect', or 'be careful'. Name the exact part.
+  - safety_info: MUST name the specific hazard AND specific protective action AND consequence — no vague phrases
+  - tips: MUST be task-specific with numbers, part names, or timing — not general encouragement
   - Do NOT wrap JSON in markdown code fences.
