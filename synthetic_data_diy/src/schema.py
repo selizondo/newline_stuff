@@ -131,8 +131,19 @@ class FailureLabelResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Phase 4: Quality evaluation result (8 dimensions)
+# Phase 5: Quality evaluation result (9 dimensions)
 # ---------------------------------------------------------------------------
+
+# Human labeler uses 6 of the 9 quality dimensions, with 2 name differences.
+# This mapping is the single source of truth used by agreement.py and mock_seeder.py.
+HUMAN_TO_LLM: dict[str, str] = {
+    "answer_completeness": "answer_completeness",
+    "safety_specificity": "safety_specificity",
+    "tool_realism": "tool_realism",
+    "scope_appropriateness": "appropriate_scope",
+    "context_clarity": "problem_answer_alignment",
+    "tip_usefulness": "tip_usefulness",
+}
 
 QUALITY_DIMENSION_FIELDS: list[str] = [
     "answer_coherence",

@@ -5,26 +5,17 @@ Flags dimensions below 80% agreement so prompt/criteria can be adjusted before
 trusting the judge on the full dataset.
 
 Usage:
-  python agreement.py --batch-label baseline-zero-shot
-  python agreement.py --batch-label baseline-zero-shot --threshold 0.75
+  python agreement.py --batch-label baseline-run
+  python agreement.py --batch-label baseline-run --threshold 0.75
 """
 
 import argparse
 import json
 from pathlib import Path
 
-AGREEMENT_THRESHOLD = 0.80  # flag any dimension below this
+from schema import HUMAN_TO_LLM
 
-# Maps human_labels.json dimension keys → quality_eval_data.json dimension keys.
-# Human labeler uses slightly different names for 2 of the 6 spec dimensions.
-HUMAN_TO_LLM: dict[str, str] = {
-    "answer_completeness": "answer_completeness",
-    "safety_specificity": "safety_specificity",
-    "tool_realism": "tool_realism",
-    "scope_appropriateness": "appropriate_scope",
-    "context_clarity": "problem_answer_alignment",
-    "tip_usefulness": "tip_usefulness",
-}
+AGREEMENT_THRESHOLD = 0.80  # flag any dimension below this
 
 HUMAN_LABELS: list[str] = [
     "D1 — Answer Completeness",

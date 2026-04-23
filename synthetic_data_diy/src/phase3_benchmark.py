@@ -19,19 +19,8 @@ from config import get_settings
 from schema import BenchmarkReport, QAPair, QualityEvalResult, ValidatedResult
 from schema import QUALITY_DIMENSION_FIELDS as QUALITY_DIM_NAMES
 
-BENCHMARK_DATASET = "dipenbhuva/home-diy-repair-qa"
 MIN_BENCHMARK_SAMPLES = 50
 CALIBRATION_PASS_THRESHOLD = 0.80  # judge must score ≥ 80% of benchmark items as pass
-
-_QA_FIELDS = frozenset(QAPair.model_fields)
-
-
-def _map_benchmark_row(row: dict) -> QAPair | None:
-    """Map a HuggingFace benchmark row to QAPair. Dataset field names match QAPair directly."""
-    try:
-        return QAPair.model_validate({k: row[k] for k in _QA_FIELDS if k in row})
-    except Exception:
-        return None
 
 
 def _check_judge_connectivity(judge_model: str) -> None:
@@ -87,6 +76,7 @@ def run_benchmark_phase(
     output_dir: Path,
     num_samples: int = MIN_BENCHMARK_SAMPLES,
     base_output: Path | None = None,
+    seed: int = 42,
 ) -> BenchmarkReport:
     """Evaluate benchmark items and verify judge calibration.
 
@@ -105,51 +95,22 @@ def run_benchmark_phase(
         print(f"  Cache: {cache_dir}")
         print(f"  To force re-calibration, delete: {cache_dir}")
         return cached
-    try:
-        from datasets import load_dataset
-    except ImportError:
-        raise ImportError("Install 'datasets': pip install datasets")
 
-    # Import here to avoid circular dependency at module level
+    from benchmark_cache import sample_validated_rows
     from phase5_quality_eval import QualityEvaluator
 
-    print(f"Loading benchmark dataset: {BENCHMARK_DATASET} ...")
-    try:
-        dataset = load_dataset(BENCHMARK_DATASET, split="train")
-    except Exception as e:
-        raise RuntimeError(f"Failed to load benchmark dataset: {e}")
+    sampled_rows = sample_validated_rows(num_samples, seed, base_output or output_dir.parent)
 
-    total_rows = len(dataset)
-    print(f"Dataset loaded: {total_rows} rows. Sampling {num_samples} items (stratified by category)...")
-
-    encoded = dataset.class_encode_column("category")
-    label_names = encoded.features["category"].names
-    split = encoded.train_test_split(test_size=min(num_samples, total_rows), stratify_by_column="category")
-    sampled_rows = [{**row, "category": label_names[row["category"]]} for row in split["test"]]
-
-    from collections import Counter
-    cat_counts = Counter(row.get("category", "unknown") for row in sampled_rows)
-    print(f"  Sampled {len(sampled_rows)} items: " + ", ".join(f"{c}={n}" for c, n in sorted(cat_counts.items())))
-
-    valid_results: list[ValidatedResult] = []
-    skipped = 0
-    for row in sampled_rows:
-        qa = _map_benchmark_row(row)
-        if qa is None:
-            skipped += 1
-            continue
-        valid_results.append(
-            ValidatedResult(
-                trace_id=f"benchmark-{uuid.uuid4()}",
-                category=row.get("category", "general_home_repair"),
-                qa_pair=qa,
-            )
+    valid_results: list[ValidatedResult] = [
+        ValidatedResult(
+            trace_id=f"benchmark-{uuid.uuid4()}",
+            category=row.get("category", "general_home_repair"),
+            qa_pair=QAPair(**{k: row[k] for k in QAPair.model_fields}),
         )
+        for row in sampled_rows
+    ]
 
-    if skipped:
-        print(f"  Skipped {skipped} rows that could not be mapped to QAPair schema.")
-
-    print(f"Evaluating {len(valid_results)} benchmark items on 8 quality dimensions...")
+    print(f"Evaluating {len(valid_results)} benchmark items on 9 quality dimensions...")
 
     # Verify judge endpoint is reachable before processing all items.
     # If Ollama or the remote judge is down, every call silently defaults to 0

@@ -1,6 +1,9 @@
 """
 Phase 1: Q&A Generation
 Generates DIY Repair Q&A pairs using LLM with diverse prompt templates.
+
+Pass generation_model="mock" to run_generation_phase() to sample from the local
+benchmark cache instead of calling an LLM (zero API credentials required).
 """
 
 import json
@@ -13,6 +16,8 @@ from instructor.exceptions import InstructorRetryException
 from llm_client import instructor_complete
 from schema import QAPair, GenerationResult
 from prompts import load_prompt_templates
+
+_QA_FIELDS = frozenset(QAPair.model_fields)
 
 
 class DIYDatasetGenerator:
@@ -94,6 +99,43 @@ class DIYDatasetGenerator:
         return results
 
 
+class BenchmarkGenerator:
+    """Samples schema-valid benchmark rows instead of calling an LLM.
+
+    Implements the same generate_batch() interface as DIYDatasetGenerator so
+    run_generation_phase() can dispatch transparently on model=="mock".
+    """
+
+    strategy = "mock"
+
+    def __init__(self, batch_id: str, batch_label: str, seed: int, output_base: Path):
+        self.batch_id = batch_id
+        self.batch_label = batch_label
+        self.seed = seed
+        self.output_base = output_base
+
+    def generate_batch(self, num_samples: int) -> list[GenerationResult]:
+        from benchmark_cache import sample_validated_rows
+
+        # Oversample 3× so enough rows survive Phase 2 heuristic gates.
+        rows = sample_validated_rows(num_samples, self.seed, self.output_base, oversample_factor=3)
+
+        results: list[GenerationResult] = []
+        for i, row in enumerate(rows):
+            raw_dict = {k: row[k] for k in _QA_FIELDS if k in row}
+            results.append(GenerationResult(
+                trace_id=str(uuid.uuid4()),
+                category=row["category"],
+                batch_id=self.batch_id,
+                batch_label=self.batch_label,
+                prompt_strategy="mock",
+                raw_response=json.dumps(raw_dict),
+                raw_dict=raw_dict,
+            ))
+        print(f"  Loaded {len(results)} rows from benchmark cache (requesting {num_samples}, oversampled 3×)")
+        return results
+
+
 def load_generation_results(output_dir: Path) -> list[GenerationResult]:
     """Load Phase 1 output from disk for use by downstream phases."""
     json_file = output_dir / "generation_results.json"
@@ -109,16 +151,26 @@ def run_generation_phase(
     strategy: str = "zero_shot",
     batch_label: str = "",
     additional_context: str = "",
+    seed: int = 42,
+    output_base: Path | None = None,
 ) -> list[GenerationResult]:
     batch_id = str(uuid.uuid4())
 
-    generator = DIYDatasetGenerator(
-        generation_model=generation_model,
-        strategy=strategy,
-        batch_id=batch_id,
-        batch_label=batch_label,
-        additional_context=additional_context,
-    )
+    if generation_model == "mock":
+        generator: BenchmarkGenerator = BenchmarkGenerator(
+            batch_id=batch_id,
+            batch_label=batch_label,
+            seed=seed,
+            output_base=output_base or output_dir.parent,
+        )
+    else:
+        generator = DIYDatasetGenerator(
+            generation_model=generation_model,
+            strategy=strategy,
+            batch_id=batch_id,
+            batch_label=batch_label,
+            additional_context=additional_context,
+        )
     results = generator.generate_batch(num_samples)
 
     parsed = sum(1 for r in results if r.parse_error is None)

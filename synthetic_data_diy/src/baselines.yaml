@@ -1,0 +1,28 @@
+# Active baseline runs.
+#
+# label:    batch directory name under output/
+# strategy: prompt strategy used for Phase 1 generation
+#           (zero_shot | few_shot | chain_of_thought | human_feedback | mock)
+# active:   when false the baseline is excluded from --all-active runs and
+#           from the compare subcommand; it still appears in stats (marked inactive)
+
+baselines:
+  - label: baseline-run
+    strategy: zero_shot
+    active: true
+
+  - label: baseline-cot
+    strategy: chain_of_thought
+    active: true
+
+  - label: baseline-few-shot
+    strategy: few_shot
+    active: false  # Phase 5 corrupted — needs re-run after Groq quota reset
+
+  - label: baseline-rlhf
+    strategy: human_feedback
+    active: false  # Phase 5 corrupted — needs re-run after Groq quota reset
+
+  - label: baseline-mock
+    strategy: mock
+    active: true

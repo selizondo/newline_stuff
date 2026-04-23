@@ -349,13 +349,23 @@ def plot_strategy_failure_comparison(
     print(f"  Saved → {save_path}")
 
 
-def run_multi_batch_comparison(base_output_dir: Path) -> dict:
+def run_multi_batch_comparison(
+    base_output_dir: Path,
+    labels: set[str] | None = None,
+) -> dict:
     """Scan base_output_dir for batch subdirs and produce cross-strategy comparison charts.
 
-    Saves to base_output_dir/comparison/.
+    labels: when provided, only include batches whose directory name is in the set.
+            Defaults to all non-underscore subdirs (original behaviour).
+
+    Saves to base_output_dir/_comparison/.
     Returns a summary dict with per-batch stats.
     """
-    batch_dirs = sorted([d for d in base_output_dir.iterdir() if d.is_dir() and not d.name.startswith("_")])
+    batch_dirs = sorted([
+        d for d in base_output_dir.iterdir()
+        if d.is_dir() and not d.name.startswith("_")
+        and (labels is None or d.name in labels)
+    ])
     if not batch_dirs:
         print("No batch directories found.")
         return {}

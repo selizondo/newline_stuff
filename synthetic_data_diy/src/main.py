@@ -11,13 +11,15 @@ Usage:
   python main.py stats                                # Print summary from existing output files
   python main.py compare                              # Cross-strategy comparison charts (output/_comparison/)
   python main.py agreement --batch-label my-run       # Phase A: human/LLM agreement on 6 quality dims
+  python main.py mock                                 # Mock pipeline seeded from HF benchmark (no API calls)
+  python main.py mock --batch-label baseline-mock --num-samples 50 --seed 42
 
 Pipeline phases (in order):
   1  Generation             — LLM generates Q&A pairs
   2  Structural Validation  — Pydantic schema gate
   3  Benchmark Calibration  — judge verified against real-world dataset BEFORE use
   4  Failure Labeling       — LLM-as-Judge: 6 binary failure modes
-  5  Quality Evaluation     — LLM-as-Judge: 8 quality dimensions
+  5  Quality Evaluation     — LLM-as-Judge: 9 quality dimensions
   6  Analysis               — visualizations + apples-to-apples benchmark gap
   7  Prompt Correction      — data-driven re-run with iterative improvement loop
 
@@ -75,11 +77,67 @@ def _phase_done(t0: float, summary: str = "") -> None:
 # stats subcommand
 # ---------------------------------------------------------------------------
 
-def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
-    """Print summaries from an existing run.
+def _phase_status(run_dir: Path) -> dict:
+    """Derive per-phase completion status and key metrics from a batch directory."""
+    import pandas as pd
 
-    If batch_label is given, reads from output_dir/batch_label/.
-    Otherwise lists all available batch directories under output_dir.
+    files = {f.name for f in run_dir.rglob("*") if f.is_file()}
+
+    ph1 = "generation_results.json" in files
+    ph2 = "structurally_valid_qa_pairs.json" in files
+    ph3 = "benchmark_report.json" in files
+
+    failure_rate: float | None = None
+    quality_rate: float | None = None
+    ph5_corrupted = False
+
+    ph4 = "failure_labeled_data.csv" in files
+    if ph4:
+        try:
+            fdf = pd.read_csv(run_dir / "failure_labeled_data.csv")
+            failure_rate = fdf["overall_failure"].mean()
+        except Exception:
+            pass
+
+    ph5 = "quality_eval_data.csv" in files
+    if ph5:
+        try:
+            qdf = pd.read_csv(run_dir / "quality_eval_data.csv")
+            dim_cols = [c for c in qdf.columns if c not in ("trace_id", "category", "overall_quality_pass")]
+            all_zero_frac = (qdf[dim_cols] == 0).all(axis=1).mean()
+            if all_zero_frac >= 0.4:
+                ph5_corrupted = True
+                ph5 = False  # treat as incomplete
+            else:
+                quality_rate = qdf["overall_quality_pass"].mean()
+        except Exception:
+            pass
+
+    ph6 = "analysis_report.json" in files
+    ph7 = (run_dir / "corrected" / "before_after_comparison.json").exists()
+
+    return {
+        "ph1": ph1, "ph2": ph2, "ph3": ph3,
+        "ph4": ph4, "ph5": ph5, "ph5_corrupted": ph5_corrupted,
+        "ph6": ph6, "ph7": ph7,
+        "failure_rate": failure_rate,
+        "quality_rate": quality_rate,
+    }
+
+
+def _fmt_check(ok: bool | None, corrupted: bool = False) -> str:
+    if corrupted:
+        return " ✗!"
+    if ok is None:
+        return "  — "
+    return "  ✓ " if ok else "  — "
+
+
+def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
+    """Print run status.
+
+    With --batch-label: dumps raw JSON reports for that run.
+    Without: prints a phase-completion table across all runs.
     """
     if batch_label:
         run_dir = output_dir / batch_label
@@ -102,96 +160,84 @@ def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
                 print(json.dumps(data, indent=2))
             else:
                 print(f"\n── {name}: not found ({path}) ──")
-    else:
-        batches = sorted([d for d in output_dir.iterdir() if d.is_dir()]) if output_dir.exists() else []
-        if not batches:
-            print(f"No batch directories found under {output_dir}.")
-            print("Run the pipeline first, or use --batch-label <name> to target a specific run.")
-            return
-        print(f"Available batches in {output_dir}:")
-        for d in batches:
-            files = [f.name for f in sorted(d.iterdir()) if f.is_file()]
-            print(f"  {d.name}  ({len(files)} files)")
+        return
+
+    batches = (
+        sorted([d for d in output_dir.iterdir() if d.is_dir() and not d.name.startswith("_")])
+        if output_dir.exists() else []
+    )
+    if not batches:
+        print(f"No batch directories found under {output_dir}.")
+        print("Run the pipeline first, or use --batch-label <name> to inspect a specific run.")
+        return
+
+    from baselines import active_labels as _active_labels
+    try:
+        _active = _active_labels()
+    except Exception:
+        _active = set()
+
+    col_label = max(len(d.name) for d in batches) + 2  # +2 for ★ marker
+    col_label = max(col_label, 22)
+
+    header = f"{'Batch':<{col_label}}  Ph1  Ph2  Ph3  Ph4  Ph5  Ph6  Ph7   Failure   Quality"
+    print(f"\n{header}")
+    print("─" * len(header))
+
+    for d in batches:
+        s = _phase_status(d)
+        fail_str = f"{s['failure_rate']*100:>5.1f}%" if s["failure_rate"] is not None else "    —  "
+        qual_str = f"{s['quality_rate']*100:>5.1f}%" if s["quality_rate"] is not None else "    —  "
+        ph5_mark = " ✗!" if s["ph5_corrupted"] else ("  ✓ " if s["ph5"] else "  — ")
+        marker = "★ " if d.name in _active else "  "
+        label = f"{marker}{d.name}"
+        row = (
+            f"{label:<{col_label}}"
+            f"{_fmt_check(s['ph1'])}"
+            f"{_fmt_check(s['ph2'])}"
+            f"{_fmt_check(s['ph3'])}"
+            f"{_fmt_check(s['ph4'])}"
+            f"{ph5_mark}"
+            f"{_fmt_check(s['ph6'])}"
+            f"{_fmt_check(s['ph7'])}"
+            f"   {fail_str}   {qual_str}"
+        )
+        print(row)
+
+    print(f"\n  ★  = active baseline (baselines.yaml)")
+    print(f"  ✓  = complete    —  = not run    ✗! = corrupted (>40% all-zero rows)")
+    print(f"  Use 'python main.py stats --batch-label <name>' for full JSON reports.")
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Home DIY Repair Q&A Synthetic Data Pipeline — all 7 phases"
-    )
-    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats', 'compare', 'agreement'")
-    parser.add_argument("--samples", type=int, default=50, help="Q&A pairs to generate (default: 50)")
-    parser.add_argument("--generation-model", type=str, default=None, dest="generation_model",
-                        help="Generation model override (default: LLM_MODEL from .env)")
-    parser.add_argument("--judge-model", type=str, default=None, dest="judge_model",
-                        help="LLM-as-Judge model override for Phases 3, 4, 5 (default: LLM_JUDGE_MODEL from .env)")
-    parser.add_argument("--phase", type=str, default="1-7",
-                        help="Phase range to run, e.g. '1-6', '3', '7' (default: 1-7)")
-    parser.add_argument("--prompt-strategy", type=str, default="zero_shot",
-                        choices=["zero_shot", "few_shot", "chain_of_thought", "human_feedback"],
-                        help="Prompt strategy for Phase 1 (default: zero_shot)")
-    parser.add_argument("--batch-label", type=str, default=None,
-                        help="Human-readable label for this run, used as output subdirectory name. "
-                             "Defaults to '<strategy>-<timestamp>'.")
-    parser.add_argument("--max-iterations", type=int, default=3, dest="max_iterations",
-                        help="Maximum correction iterations in Phase 7 (default: 3)")
-    parser.add_argument("--output-dir", type=str, default="output", help="Base output directory (default: output)")
+# ---------------------------------------------------------------------------
+# Phase execution helper
+# ---------------------------------------------------------------------------
 
-    args = parser.parse_args()
-
-    base_output = Path(args.output_dir)
-
-    if args.command == "stats":
-        quick_stats(base_output, batch_label=args.batch_label)
-        return
-
-    if args.command == "compare":
-        from phase6_analysis import run_multi_batch_comparison
-        run_multi_batch_comparison(base_output)
-        return
-
-    if args.command == "agreement":
-        if not args.batch_label:
-            print("Error: --batch-label is required for the 'agreement' subcommand.")
-            print("  python main.py agreement --batch-label baseline-zero-shot")
-            return
-        from agreement import run_agreement
-        run_agreement(batch_label=args.batch_label, output_dir=base_output)
-        return
-
-    # Resolve models from CLI or config
-    from config import get_settings
-    settings = get_settings()
-    generation_model = args.generation_model or settings.generation_model
-    judge_model = args.judge_model or settings.judge_model
-
-    strategy = args.prompt_strategy
-    batch_label = args.batch_label or f"{strategy}-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-    # Each run gets its own subdirectory so runs never overwrite each other
+def _run_phases(
+    phase_start: int,
+    phase_end: int,
+    batch_label: str,
+    strategy: str,
+    generation_model: str,
+    judge_model: str,
+    num_samples: int,
+    base_output: Path,
+    max_iterations: int,
+) -> dict[str, float]:
+    """Run the requested phase range for a single batch. Returns phase timings."""
     output_dir = base_output / batch_label
     output_dir.mkdir(parents=True, exist_ok=True)
     corrected_dir = output_dir / "corrected"
 
-    phase_start, phase_end = _parse_phase_range(args.phase)
-
-    _banner("HOME DIY REPAIR Q&A SYNTHETIC DATA PIPELINE")
-    print(f"Timestamp       : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"Generation model: {generation_model} ({settings.base_url})")
-    print(f"Judge model     : {judge_model} ({settings.judge_base_url})")
-    print(f"Samples         : {args.samples}")
-    print(f"Phases          : {phase_start}–{phase_end}")
-    print(f"Prompt strategy : {strategy}")
-    print(f"Batch label     : {batch_label}")
-    print(f"Max iterations  : {args.max_iterations} (Phase 7)")
-    print(f"Output dir      : {output_dir.absolute()}")
+    # mock strategy always uses the benchmark generator regardless of generation_model
+    _gen_model = "mock" if strategy == "mock" else generation_model
 
     generation_results = None
     valid_results = None
-
     phase_timings: dict[str, float] = {}
 
     # ── Phase 1: Generation ───────────────────────────────────────────────
@@ -199,11 +245,12 @@ def main() -> None:
         t0 = _section("PHASE 1 — Generation")
         from phase1_generation import run_generation_phase
         generation_results = run_generation_phase(
-            num_samples=args.samples,
-            generation_model=generation_model,
+            num_samples=num_samples,
+            generation_model=_gen_model,
             output_dir=output_dir,
             strategy=strategy,
             batch_label=batch_label,
+            output_base=base_output,
         )
         parsed = sum(1 for r in generation_results if r.parse_error is None)
         phase_timings["1 Generation"] = time.monotonic() - t0
@@ -269,12 +316,12 @@ def main() -> None:
         t0 = _section("PHASE 7 — Prompt Correction & Re-evaluation")
         from phase7_correction import run_correction_phase
         run_correction_phase(
-            num_samples=args.samples,
-            generation_model=generation_model,
+            num_samples=num_samples,
+            generation_model=_gen_model,
             judge_model=judge_model,
             baseline_dir=output_dir,
             corrected_dir=corrected_dir,
-            max_iterations=args.max_iterations,
+            max_iterations=max_iterations,
         )
         from phase6_analysis import run_analysis_phase
         print("\nUpdating visualizations with corrected data...")
@@ -282,7 +329,10 @@ def main() -> None:
         phase_timings["7 Correction"] = time.monotonic() - t0
         _phase_done(t0)
 
-    # ── Final summary ─────────────────────────────────────────────────────
+    return phase_timings
+
+
+def _print_phase_timings(phase_timings: dict[str, float], output_dir: Path) -> None:
     _banner("PIPELINE COMPLETE")
     print(f"Output dir: {output_dir.absolute()}")
     if phase_timings:
@@ -299,6 +349,167 @@ def main() -> None:
     for f in sorted(output_dir.rglob("*")):
         if f.is_file():
             print(f"  {f.relative_to(output_dir)}")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Home DIY Repair Q&A Synthetic Data Pipeline — all 7 phases"
+    )
+    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats', 'compare', 'agreement', 'mock'")
+    parser.add_argument("--samples", type=int, default=50, help="Q&A pairs to generate (default: 50)")
+    parser.add_argument("--generation-model", type=str, default=None, dest="generation_model",
+                        help="Generation model override (default: LLM_MODEL from .env)")
+    parser.add_argument("--judge-model", type=str, default=None, dest="judge_model",
+                        help="LLM-as-Judge model override for Phases 3, 4, 5 (default: LLM_JUDGE_MODEL from .env)")
+    parser.add_argument("--phase", type=str, default="1-7",
+                        help="Phase range to run, e.g. '1-6', '3', '7' (default: 1-7)")
+    parser.add_argument("--prompt-strategy", type=str, default="zero_shot",
+                        choices=["zero_shot", "few_shot", "chain_of_thought", "human_feedback", "mock"],
+                        help="Prompt strategy for Phase 1 (default: zero_shot)")
+    parser.add_argument("--batch-label", type=str, default=None,
+                        help="Human-readable label for this run, used as output subdirectory name. "
+                             "Defaults to '<strategy>-<timestamp>'. Ignored when --all-active is set.")
+    parser.add_argument("--all-active", action="store_true", dest="all_active",
+                        help="Run the requested phases for every active baseline in baselines.yaml sequentially.")
+    parser.add_argument("--max-iterations", type=int, default=3, dest="max_iterations",
+                        help="Maximum correction iterations in Phase 7 (default: 3)")
+    parser.add_argument("--output-dir", type=str, default="output", help="Base output directory (default: output)")
+    parser.add_argument("--num-samples", type=int, default=50, dest="num_samples",
+                        help="Benchmark rows to seed (mock subcommand, default: 50)")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Random seed for Bernoulli draws (mock subcommand, default: 42)")
+    parser.add_argument("--skip-human-labels", action="store_true", dest="skip_human_labels",
+                        help="Skip generating mock human_labels.json (mock subcommand)")
+
+    args = parser.parse_args()
+
+    base_output = Path(args.output_dir)
+
+    if args.command == "stats":
+        quick_stats(base_output, batch_label=args.batch_label)
+        return
+
+    if args.command == "compare":
+        from baselines import active_labels
+        from phase6_analysis import run_multi_batch_comparison
+        run_multi_batch_comparison(base_output, labels=active_labels())
+        return
+
+    if args.command == "agreement":
+        if not args.batch_label:
+            print("Error: --batch-label is required for the 'agreement' subcommand.")
+            print("  python main.py agreement --batch-label baseline-run")
+            return
+        from agreement import run_agreement
+        run_agreement(batch_label=args.batch_label, output_dir=base_output)
+        return
+
+    if args.command == "mock":
+        from mock_seeder import run_mock_pipeline
+        mock_label = args.batch_label or "baseline-mock"
+        _banner("HOME DIY REPAIR Q&A — MOCK PIPELINE (no API calls)")
+        print(f"Batch label  : {mock_label}")
+        print(f"Num samples  : {args.num_samples}")
+        print(f"Seed         : {args.seed}")
+        print(f"Human labels : {'skipped' if args.skip_human_labels else 'generated'}")
+        t0 = time.monotonic()
+        out_dir = run_mock_pipeline(
+            batch_label=mock_label,
+            num_samples=args.num_samples,
+            seed=args.seed,
+            skip_human_labels=args.skip_human_labels,
+            output_dir_base=base_output,
+        )
+        elapsed = time.monotonic() - t0
+        _banner("MOCK PIPELINE COMPLETE")
+        print(f"Output dir: {out_dir.absolute()}")
+        print(f"Total time: {int(elapsed)}s")
+        print("\nOutput files:")
+        for f in sorted(out_dir.rglob("*")):
+            if f.is_file():
+                print(f"  {f.relative_to(out_dir)}")
+        return
+
+    # Resolve models from CLI or config
+    from config import get_settings
+    settings = get_settings()
+    generation_model = args.generation_model or settings.generation_model
+    judge_model = args.judge_model or settings.judge_model
+
+    phase_start, phase_end = _parse_phase_range(args.phase)
+
+    # ── --all-active: loop through every active baseline sequentially ─────
+    if args.all_active:
+        from baselines import active_baselines
+        baselines = active_baselines()
+        if not baselines:
+            print("No active baselines found in baselines.yaml.")
+            return
+        labels = ", ".join(b.label for b in baselines)
+        _banner(f"HOME DIY REPAIR Q&A — ALL ACTIVE BASELINES ({len(baselines)})")
+        print(f"Timestamp       : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Generation model: {generation_model} ({settings.base_url})")
+        print(f"Judge model     : {judge_model} ({settings.judge_base_url})")
+        print(f"Samples         : {args.samples}")
+        print(f"Phases          : {phase_start}–{phase_end}")
+        print(f"Baselines       : {labels}")
+
+        all_timings: dict[str, float] = {}
+        for i, baseline in enumerate(baselines):
+            print(f"\n{'━'*60}")
+            print(f"  Baseline {i+1}/{len(baselines)}: {baseline.label}  (strategy: {baseline.strategy})")
+            print(f"{'━'*60}")
+            timings = _run_phases(
+                phase_start=phase_start,
+                phase_end=phase_end,
+                batch_label=baseline.label,
+                strategy=baseline.strategy,
+                generation_model=generation_model,
+                judge_model=judge_model,
+                num_samples=args.samples,
+                base_output=base_output,
+                max_iterations=args.max_iterations,
+            )
+            for k, v in timings.items():
+                all_timings[f"{baseline.label}/{k}"] = v
+
+        _banner(f"ALL ACTIVE BASELINES COMPLETE ({len(baselines)} runs)")
+        total = sum(all_timings.values())
+        total_mins, total_secs = divmod(int(total), 60)
+        print(f"Total wall time: {total_mins}m {total_secs:02d}s across {len(baselines)} baselines")
+        return
+
+    # ── Single baseline run ───────────────────────────────────────────────
+    strategy = args.prompt_strategy
+    batch_label = args.batch_label or f"{strategy}-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    _banner("HOME DIY REPAIR Q&A SYNTHETIC DATA PIPELINE")
+    print(f"Timestamp       : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Generation model: {generation_model} ({settings.base_url})")
+    print(f"Judge model     : {judge_model} ({settings.judge_base_url})")
+    print(f"Samples         : {args.samples}")
+    print(f"Phases          : {phase_start}–{phase_end}")
+    print(f"Prompt strategy : {strategy}")
+    print(f"Batch label     : {batch_label}")
+    print(f"Max iterations  : {args.max_iterations} (Phase 7)")
+    print(f"Output dir      : {(base_output / batch_label).absolute()}")
+
+    phase_timings = _run_phases(
+        phase_start=phase_start,
+        phase_end=phase_end,
+        batch_label=batch_label,
+        strategy=strategy,
+        generation_model=generation_model,
+        judge_model=judge_model,
+        num_samples=args.samples,
+        base_output=base_output,
+        max_iterations=args.max_iterations,
+    )
+    _print_phase_timings(phase_timings, base_output / batch_label)
 
 
 if __name__ == "__main__":

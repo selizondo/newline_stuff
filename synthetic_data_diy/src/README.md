@@ -30,8 +30,22 @@ python main.py --phase 7   --batch-label my-run-1
 # Correction with up to 5 iterations
 python main.py --phase 7 --max-iterations 5 --batch-label my-run-1
 
-# Inspect results from a previous run
+# Status table — phase completion + key metrics across all runs
+python main.py stats
+
+# Full JSON report for a specific run
 python main.py stats --batch-label my-run-1
+
+# Cross-strategy comparison charts (after running multiple batches)
+python main.py compare
+
+# Human/LLM agreement analysis for a run (requires human_labels.json)
+python main.py agreement --batch-label my-run-1
+
+# Mock pipeline — no API credentials required, seeds from HF benchmark
+python main.py mock
+python main.py mock --batch-label baseline-mock --num-samples 50 --seed 42
+python main.py mock --skip-human-labels
 ```
 
 ## Configuration
@@ -140,11 +154,11 @@ co-occur.
 
 ### Phase 5 — Quality Evaluation (LLM-as-Judge)
 
-**What it does:** A second LLM judge scores each sample across eight quality dimensions:
-`answer_coherence`, `step_actionability`, `tool_realism`, `safety_specificity`,
-`tip_usefulness`, `problem_answer_alignment`, `appropriate_scope`, and
-`category_accuracy`. Each dimension has a pass/fail threshold defined in its YAML config
-under `quality_dimensions/`. A sample passes overall only if it passes all eight.
+**What it does:** A second LLM judge scores each sample across nine quality dimensions:
+`answer_coherence`, `answer_completeness`, `step_actionability`, `tool_realism`,
+`safety_specificity`, `tip_usefulness`, `problem_answer_alignment`, `appropriate_scope`,
+and `category_accuracy`. Each dimension has a pass/fail threshold defined in its YAML
+config under `quality_dimensions/`. A sample passes overall only if it passes all nine.
 
 **Rationale:** Where Phase 4 looks for specific defects, Phase 5 evaluates positive
 quality attributes. Using a dedicated judge model (configurable via `LLM_JUDGE_MODEL`)
@@ -267,8 +281,10 @@ Each run writes to `output/<batch-label>/`. Phase 7 writes its corrected-run out
 | `validation_summary.json` | Phase 2 | Total/valid/invalid counts and common errors |
 | `benchmark_eval.csv` | Phase 3 | Per-item quality scores on benchmark set |
 | `benchmark_report.json` | Phase 3 | Calibration pass/fail and per-dimension rates |
+| `gate_report.json` | Phase 2 | Gate pass/fail counts, category distribution, dedup count |
 | `failure_labeled_data.{csv,json}` | Phase 4 | 6 binary failure flags per item |
-| `quality_eval_data.{csv,json}` | Phase 5 | 8 quality dimension scores per item |
+| `quality_eval_data.{csv,json}` | Phase 5 | 9 quality dimension scores per item |
+| `human_labels.json` | `human_labeler.py` / mock | 6 human-rated dimensions per item (used by `agreement` subcommand) |
 | `analysis_report.json` | Phase 6 | Aggregated rates, thresholds met, benchmark gap, problematic trace_ids |
 | `corrected/before_after_comparison.json` | Phase 7 | Improvement %, iterations run, diversity score, per-mode deltas |
 
@@ -293,11 +309,12 @@ Criteria are defined in `failure_modes/<name>.yaml`. Add a new file to introduce
 
 ## Quality Dimensions Reference (Phase 5)
 
-Eight pass/fail scores assigned per sample by the LLM judge:
+Nine pass/fail scores assigned per sample by the LLM judge:
 
 | Dimension | Threshold | Description |
 |---|---|---|
 | `answer_coherence` | 90% | Narrative flow, logical progression from problem to resolution |
+| `answer_completeness` | 85% | Answer covers all necessary steps without leaving critical gaps |
 | `step_actionability` | 85% | Every step has a specific action verb and enough detail to execute |
 | `tool_realism` | 95% | All tools cost < $50 and are available at hardware stores |
 | `safety_specificity` | 90% | Names a specific hazard and gives a specific protective action |
@@ -314,7 +331,7 @@ Criteria and thresholds are defined in `quality_dimensions/<name>.yaml`. Edit a 
 
 ```
 src/
-├── main.py                   # CLI orchestrator for all 7 phases
+├── main.py                   # CLI orchestrator — all 7 phases + compare/agreement/mock subcommands
 ├── config.py                 # Settings (env vars / .env)
 ├── schema.py                 # Pydantic schemas shared across all phases
 ├── llm_client.py             # Cached OpenAI-compatible client with backoff
@@ -324,9 +341,12 @@ src/
 ├── phase2_validation.py      # Structural validation
 ├── phase3_benchmark.py       # Judge calibration against real-world benchmark
 ├── phase4_failure_labeling.py # LLM-as-Judge: 6 failure modes
-├── phase5_quality_eval.py    # LLM-as-Judge: 8 quality dimensions
+├── phase5_quality_eval.py    # LLM-as-Judge: 9 quality dimensions
 ├── phase6_analysis.py        # Analysis, visualizations, reports + benchmark gap
 ├── phase7_correction.py      # Data-driven prompt correction with iterative loop
+├── mock_seeder.py            # Mock pipeline seeder — phases 1–6 with no API calls
+├── agreement.py              # Phase A: human/LLM agreement analysis
+├── human_labeler.py          # Interactive CLI for collecting human labels
 │
 ├── prompts/                  # Prompt templates organised by strategy
 │   ├── zero_shot/            # 5 category YAMLs

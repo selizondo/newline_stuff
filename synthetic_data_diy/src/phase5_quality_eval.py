@@ -1,6 +1,6 @@
 """
 Phase 5: Quality Evaluation (LLM-as-Judge)
-Scores each Q&A pair across 8 quality dimensions defined in YAML config files.
+Scores each Q&A pair across 9 quality dimensions defined in YAML config files.
 
 Runs after Phase 4 failure labeling; uses the same judge infrastructure confirmed
 trustworthy by Phase 3 benchmark calibration.
