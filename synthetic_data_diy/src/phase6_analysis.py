@@ -253,6 +253,15 @@ class FailureAnalyzer:
         )
 
 
+def _is_quality_data_clean(df: pd.DataFrame) -> bool:
+    """Return False if more than 40% of rows have all-zero quality scores (rate-limit corruption)."""
+    dim_cols = [c for c in QUALITY_DIM_NAMES if c in df.columns]
+    if not dim_cols:
+        return False
+    all_zero = (df[dim_cols] == 0).all(axis=1).mean()
+    return all_zero < 0.4
+
+
 def plot_strategy_comparison(
     strategy_dirs: dict[str, Path],
     save_path: Path,
@@ -265,10 +274,13 @@ def plot_strategy_comparison(
             print(f"  [strategy comparison] skipping '{label}' — quality_eval_data.csv not found")
             continue
         df = pd.read_csv(csv)
+        if not _is_quality_data_clean(df):
+            print(f"  [strategy comparison] skipping '{label}' — data appears corrupted (>40% all-zero rows)")
+            continue
         strategy_rates[label] = [float(df[dim].mean()) if dim in df.columns else 0.0 for dim in QUALITY_DIM_NAMES]
 
     if not strategy_rates:
-        print("  [strategy comparison] no data found, skipping chart")
+        print("  [strategy comparison] no clean data found, skipping chart")
         return
 
     labels = list(strategy_rates.keys())
@@ -293,6 +305,101 @@ def plot_strategy_comparison(
     plt.savefig(save_path, dpi=150)
     plt.close()
     print(f"  Saved → {save_path}")
+
+
+def plot_strategy_failure_comparison(
+    strategy_dirs: dict[str, Path],
+    save_path: Path,
+) -> None:
+    """Grouped bar chart: overall failure rate + per-mode rates per strategy."""
+    strategy_failure: dict[str, list[float]] = {}
+    for label, d in strategy_dirs.items():
+        csv = d / "failure_labeled_data.csv"
+        if not csv.exists():
+            print(f"  [failure comparison] skipping '{label}' — failure_labeled_data.csv not found")
+            continue
+        df = pd.read_csv(csv)
+        strategy_failure[label] = [float(df[m].mean()) if m in df.columns else 0.0 for m in FAILURE_MODE_NAMES]
+
+    if not strategy_failure:
+        print("  [failure comparison] no data found, skipping chart")
+        return
+
+    labels = list(strategy_failure.keys())
+    n_strategies = len(labels)
+    n_modes = len(FAILURE_MODE_NAMES)
+    x = range(n_modes)
+    width = 0.8 / n_strategies
+    colours = ["#3498db", "#2ecc71", "#e67e22", "#9b59b6", "#e74c3c"]
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    for i, label in enumerate(labels):
+        offsets = [xi + (i - n_strategies / 2 + 0.5) * width for xi in x]
+        ax.bar(offsets, strategy_failure[label], width=width, label=label, color=colours[i % len(colours)])
+
+    ax.set_title("Failure Mode Rates by Prompt Strategy", fontsize=13)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels([_label(m) for m in FAILURE_MODE_NAMES], rotation=30, ha="right")
+    ax.set_ylabel("Failure Rate")
+    ax.set_ylim(0, 1.05)
+    ax.legend(title="Strategy", bbox_to_anchor=(1.01, 1), loc="upper left")
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    plt.close()
+    print(f"  Saved → {save_path}")
+
+
+def run_multi_batch_comparison(base_output_dir: Path) -> dict:
+    """Scan base_output_dir for batch subdirs and produce cross-strategy comparison charts.
+
+    Saves to base_output_dir/comparison/.
+    Returns a summary dict with per-batch stats.
+    """
+    batch_dirs = sorted([d for d in base_output_dir.iterdir() if d.is_dir() and not d.name.startswith("_")])
+    if not batch_dirs:
+        print("No batch directories found.")
+        return {}
+
+    strategy_dirs: dict[str, Path] = {d.name: d for d in batch_dirs}
+    print(f"Found {len(strategy_dirs)} batch(es): {', '.join(strategy_dirs)}")
+
+    compare_dir = base_output_dir / "_comparison"
+    compare_dir.mkdir(exist_ok=True)
+
+    plot_strategy_comparison(strategy_dirs, compare_dir / "strategy_quality_comparison.png")
+    plot_strategy_failure_comparison(strategy_dirs, compare_dir / "strategy_failure_comparison.png")
+
+    summary: dict = {}
+    for label, d in strategy_dirs.items():
+        entry: dict = {}
+        q_csv = d / "quality_eval_data.csv"
+        f_csv = d / "failure_labeled_data.csv"
+        if q_csv.exists():
+            qdf = pd.read_csv(q_csv)
+            clean = bool(_is_quality_data_clean(qdf))
+            entry["quality_pass_rate"] = round(float(qdf["overall_quality_pass"].mean()), 4) if clean else None
+            entry["quality_data_clean"] = clean
+            entry["n_quality"] = len(qdf)
+        if f_csv.exists():
+            fdf = pd.read_csv(f_csv)
+            entry["failure_rate"] = round(float(fdf["overall_failure"].mean()), 4)
+            entry["n_failure"] = len(fdf)
+        summary[label] = entry
+
+    report_path = compare_dir / "comparison_report.json"
+    report_path.write_text(json.dumps(summary, indent=2))
+    print(f"  Saved → {report_path}")
+
+    print("\nCross-batch summary:")
+    print(f"  {'Batch':<30} {'Quality%':>9}  {'Failure%':>9}  {'N':>4}  Clean")
+    for label, e in summary.items():
+        q = f"{e['quality_pass_rate']*100:.1f}%" if e.get("quality_pass_rate") is not None else "  N/A  "
+        f = f"{e['failure_rate']*100:.1f}%" if "failure_rate" in e else "  N/A"
+        n = e.get("n_quality", e.get("n_failure", "?"))
+        clean = "✓" if e.get("quality_data_clean") else "✗"
+        print(f"  {label:<30} {q:>9}  {f:>9}  {n:>4}  {clean}")
+
+    return summary
 
 
 def run_analysis_phase(

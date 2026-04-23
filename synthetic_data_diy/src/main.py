@@ -9,6 +9,7 @@ Usage:
   python main.py --phase 1-6                          # Stop after analysis
   python main.py --phase 7 --batch-label my-run-1    # Correction only (requires phases 4-5 output)
   python main.py stats                                # Print summary from existing output files
+  python main.py compare                              # Cross-strategy comparison charts (output/_comparison/)
 
 Pipeline phases (in order):
   1  Generation             — LLM generates Q&A pairs
@@ -31,6 +32,7 @@ Output is written to output/<batch-label>/ so every run is isolated.
 import argparse
 import json
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -53,8 +55,19 @@ def _banner(text: str) -> None:
     print(f"\n{line}\n{text}\n{line}")
 
 
-def _section(text: str) -> None:
-    print(f"\n{'─'*50}\n{text}\n{'─'*50}")
+def _section(text: str) -> float:
+    """Print a phase section header with timestamp. Returns start time (monotonic)."""
+    ts = datetime.now().strftime("%H:%M:%S")
+    print(f"\n{'─'*50}\n{text}  [{ts}]\n{'─'*50}")
+    return time.monotonic()
+
+
+def _phase_done(t0: float, summary: str = "") -> None:
+    elapsed = time.monotonic() - t0
+    mins, secs = divmod(int(elapsed), 60)
+    duration = f"{mins}m {secs:02d}s" if mins else f"{secs}s"
+    suffix = f"  →  {summary}" if summary else ""
+    print(f"  ✓ done in {duration}{suffix}")
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +121,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Home DIY Repair Q&A Synthetic Data Pipeline — all 7 phases"
     )
-    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats'")
+    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats', 'compare'")
     parser.add_argument("--samples", type=int, default=50, help="Q&A pairs to generate (default: 50)")
     parser.add_argument("--generation-model", type=str, default=None, dest="generation_model",
                         help="Generation model override (default: LLM_MODEL from .env)")
@@ -132,6 +145,11 @@ def main() -> None:
 
     if args.command == "stats":
         quick_stats(base_output, batch_label=args.batch_label)
+        return
+
+    if args.command == "compare":
+        from phase6_analysis import run_multi_batch_comparison
+        run_multi_batch_comparison(base_output)
         return
 
     # Resolve models from CLI or config
@@ -164,9 +182,11 @@ def main() -> None:
     generation_results = None
     valid_results = None
 
+    phase_timings: dict[str, float] = {}
+
     # ── Phase 1: Generation ───────────────────────────────────────────────
     if phase_start <= 1 <= phase_end:
-        _section("PHASE 1 — Generation")
+        t0 = _section("PHASE 1 — Generation")
         from phase1_generation import run_generation_phase
         generation_results = run_generation_phase(
             num_samples=args.samples,
@@ -175,58 +195,68 @@ def main() -> None:
             strategy=strategy,
             batch_label=batch_label,
         )
+        parsed = sum(1 for r in generation_results if r.parse_error is None)
+        phase_timings["1 Generation"] = time.monotonic() - t0
+        _phase_done(t0, f"{parsed}/{len(generation_results)} parsed ({parsed/len(generation_results)*100:.0f}%)")
 
     # ── Phase 2: Structural Validation ───────────────────────────────────
     if phase_start <= 2 <= phase_end:
-        _section("PHASE 2 — Structural Validation")
+        t0 = _section("PHASE 2 — Structural Validation")
         from phase1_generation import load_generation_results
         from phase2_validation import run_validation_phase
         if generation_results is None:
             generation_results = load_generation_results(output_dir)
             print(f"Loaded {len(generation_results)} generation results from disk.")
-        valid_results, _ = run_validation_phase(generation_results, output_dir)
+        valid_results, summary = run_validation_phase(generation_results, output_dir)
+        phase_timings["2 Validation"] = time.monotonic() - t0
+        _phase_done(t0, f"{summary.total_valid}/{summary.total_generated} valid ({summary.validation_rate*100:.0f}%)")
 
     # ── Phase 3: Benchmark Calibration ───────────────────────────────────
-    # Runs the judge on real-world benchmark data to verify it is trustworthy
-    # BEFORE it is used to evaluate generated data in Phases 4 and 5.
     if phase_start <= 3 <= phase_end:
-        _section("PHASE 3 — Benchmark Calibration (judge verification)")
+        t0 = _section("PHASE 3 — Benchmark Calibration (judge verification)")
         from phase3_benchmark import run_benchmark_phase
-        run_benchmark_phase(
+        bench = run_benchmark_phase(
             judge_model=judge_model,
             output_dir=output_dir,
             num_samples=50,
             base_output=base_output,
         )
+        phase_timings["3 Benchmark"] = time.monotonic() - t0
+        _phase_done(t0, f"pass rate {bench.benchmark_quality_pass_rate*100:.1f}% ({'cached' if time.monotonic()-t0 < 5 else 'calibration passed' if bench.calibration_passed else 'WARNING: calibration failed'})")
 
     # ── Phase 4: Failure Labeling ─────────────────────────────────────────
     if phase_start <= 4 <= phase_end:
-        _section("PHASE 4 — Failure Labeling (LLM-as-Judge, 6 modes)")
+        t0 = _section("PHASE 4 — Failure Labeling (LLM-as-Judge, 6 modes)")
         from phase2_validation import load_valid_data
         from phase4_failure_labeling import run_failure_labeling_phase
         if valid_results is None:
             valid_results = load_valid_data(output_dir)
-        run_failure_labeling_phase(valid_results, judge_model, output_dir)
+        df4 = run_failure_labeling_phase(valid_results, judge_model, output_dir)
+        phase_timings["4 Failure Label"] = time.monotonic() - t0
+        _phase_done(t0, f"overall failure rate {df4['overall_failure'].mean()*100:.1f}%")
 
     # ── Phase 5: Quality Evaluation ───────────────────────────────────────
     if phase_start <= 5 <= phase_end:
-        _section("PHASE 5 — Quality Evaluation (LLM-as-Judge, 8 dimensions)")
+        t0 = _section("PHASE 5 — Quality Evaluation (LLM-as-Judge, 9 dimensions)")
         from phase2_validation import load_valid_data
         from phase5_quality_eval import run_quality_eval_phase
         if valid_results is None:
             valid_results = load_valid_data(output_dir)
-        run_quality_eval_phase(valid_results, judge_model, output_dir)
+        df5 = run_quality_eval_phase(valid_results, judge_model, output_dir)
+        phase_timings["5 Quality Eval"] = time.monotonic() - t0
+        _phase_done(t0, f"overall quality pass rate {df5['overall_quality_pass'].mean()*100:.1f}%")
 
     # ── Phase 6: Analysis & Visualizations ───────────────────────────────
-    # Auto-loads benchmark_eval.csv from Phase 3 for apples-to-apples gap.
     if phase_start <= 6 <= phase_end:
-        _section("PHASE 6 — Failure & Quality Analysis")
+        t0 = _section("PHASE 6 — Failure & Quality Analysis")
         from phase6_analysis import run_analysis_phase
         run_analysis_phase(output_dir=output_dir)
+        phase_timings["6 Analysis"] = time.monotonic() - t0
+        _phase_done(t0)
 
     # ── Phase 7: Prompt Correction ────────────────────────────────────────
     if phase_start <= 7 <= phase_end:
-        _section("PHASE 7 — Prompt Correction & Re-evaluation")
+        t0 = _section("PHASE 7 — Prompt Correction & Re-evaluation")
         from phase7_correction import run_correction_phase
         run_correction_phase(
             num_samples=args.samples,
@@ -236,14 +266,26 @@ def main() -> None:
             corrected_dir=corrected_dir,
             max_iterations=args.max_iterations,
         )
-        # Re-run Phase 6 to include corrected data in visualizations
         from phase6_analysis import run_analysis_phase
         print("\nUpdating visualizations with corrected data...")
         run_analysis_phase(output_dir=output_dir, corrected_dir=corrected_dir)
+        phase_timings["7 Correction"] = time.monotonic() - t0
+        _phase_done(t0)
 
     # ── Final summary ─────────────────────────────────────────────────────
     _banner("PIPELINE COMPLETE")
-    print(f"Output files in: {output_dir.absolute()}")
+    print(f"Output dir: {output_dir.absolute()}")
+    if phase_timings:
+        print("\nPhase timings:")
+        total = sum(phase_timings.values())
+        for name, elapsed in phase_timings.items():
+            mins, secs = divmod(int(elapsed), 60)
+            dur = f"{mins}m {secs:02d}s" if mins else f"{secs}s"
+            bar = "█" * int(elapsed / total * 20)
+            print(f"  {name:<18} {dur:>6}  {bar}")
+        total_mins, total_secs = divmod(int(total), 60)
+        print(f"  {'Total':<18} {total_mins}m {total_secs:02d}s")
+    print("\nOutput files:")
     for f in sorted(output_dir.rglob("*")):
         if f.is_file():
             print(f"  {f.relative_to(output_dir)}")

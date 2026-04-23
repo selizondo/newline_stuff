@@ -101,7 +101,8 @@ class FailureLabeler:
         try:
             batch = judge_batch(self._build_batch_prompt(qa), self._batch_model, self.model)
             scores = batch.model_dump()
-        except Exception:
+        except Exception as e:
+            print(f"\n    [judge_batch error] {type(e).__name__}: {str(e)[:120]}")
             scores = {m.name: 1 for m in self.failure_modes}
         failure_count = sum(scores.values())
         return FailureLabelResult(
@@ -131,7 +132,9 @@ def run_failure_labeling_phase(
         label = labeler.evaluate(result)
         label_results.append(label)
         fail_names = [m for m in FAILURE_MODE_FIELDS if getattr(label, m) == 1]
-        print("FAIL: " + ", ".join(fail_names) if fail_names else "PASS")
+        status = "FAIL: " + ", ".join(fail_names) if fail_names else "PASS"
+        running_rate = sum(r.overall_failure for r in label_results) / len(label_results)
+        print(f"{status}  ({running_rate*100:.0f}% fail so far)")
 
     rows = [r.model_dump() for r in label_results]
     df = pd.DataFrame(rows)

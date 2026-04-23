@@ -106,7 +106,8 @@ class QualityEvaluator:
         try:
             batch = judge_batch(self._build_batch_prompt(qa, result.category), self._batch_model, self.model)
             scores = batch.model_dump()
-        except Exception:
+        except Exception as e:
+            print(f"\n    [judge_batch error] {type(e).__name__}: {str(e)[:120]}")
             scores = {d.name: 0 for d in QUALITY_DIMENSIONS}
         overall_pass = 1 if all(v == 1 for v in scores.values()) else 0
         return QualityEvalResult(
@@ -131,7 +132,9 @@ def run_quality_eval_phase(
         eval_result = evaluator.evaluate(result)
         eval_results.append(eval_result)
         dims_failed = [d.name for d in QUALITY_DIMENSIONS if getattr(eval_result, d.name) == 0]
-        print("FAIL: " + ", ".join(dims_failed) if dims_failed else f"PASS (all {len(QUALITY_DIMENSIONS)})")
+        status = "FAIL: " + ", ".join(dims_failed) if dims_failed else f"PASS (all {len(QUALITY_DIMENSIONS)})"
+        running_rate = sum(r.overall_quality_pass for r in eval_results) / len(eval_results)
+        print(f"{status}  ({running_rate*100:.0f}% pass so far)")
 
     rows = [r.model_dump() for r in eval_results]
     df = pd.DataFrame(rows)

@@ -35,7 +35,7 @@ _DEFAULT_MAX_TOKENS: int = 1500
 _DEFAULT_MAX_RETRIES: int = 4
 _DEFAULT_BACKOFF_DELAY: float = 2.0   # initial RateLimitError retry delay in seconds
 _BACKOFF_MULTIPLIER: float = 2.0      # multiplier applied each retry
-_INTER_CYCLE_SLEEP: float = 60.0      # sleep after exhausting all retries before re-raising; gives the API time to recover between outer-loop calls
+_INTER_CYCLE_SLEEP: float = 90.0      # sleep after exhausting all retries before re-raising; gives the API time to recover between outer-loop calls
 _INSTRUCTOR_INTERNAL_RETRIES: int = 3  # Instructor-level validation retries
 
 
@@ -192,12 +192,23 @@ def judge_batch(
                 messages=messages,
                 response_model=response_model,
                 temperature=0.0,
-                max_tokens=200,
+                max_tokens=500,
                 max_retries=_INSTRUCTOR_INTERNAL_RETRIES,
             )
             time.sleep(rate_limit_delay)
             return result
-        except InstructorRetryException:
+        except InstructorRetryException as e:
+            # If Instructor exhausted its internal retries due to a rate limit,
+            # treat it as a RateLimitError and apply our outer backoff.
+            if "429" in str(e):
+                if attempt == max_retries:
+                    print(f"\n  [rate limit] all {max_retries} retries exhausted — sleeping {_INTER_CYCLE_SLEEP:.0f}s before raising", flush=True)
+                    time.sleep(_INTER_CYCLE_SLEEP)
+                    raise
+                print(f"\n  [rate limit] waiting {delay:.0f}s before retry {attempt + 1}/{max_retries}...", end="", flush=True)
+                time.sleep(delay)
+                delay *= _BACKOFF_MULTIPLIER
+                continue
             raise
         except RateLimitError:
             if attempt == max_retries:
