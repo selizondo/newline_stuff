@@ -10,6 +10,7 @@ Usage:
   python main.py --phase 7 --batch-label my-run-1    # Correction only (requires phases 4-5 output)
   python main.py stats                                # Print summary from existing output files
   python main.py compare                              # Cross-strategy comparison charts (output/_comparison/)
+  python main.py agreement --batch-label my-run       # Phase A: human/LLM agreement on 6 quality dims
 
 Pipeline phases (in order):
   1  Generation             — LLM generates Q&A pairs
@@ -121,7 +122,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Home DIY Repair Q&A Synthetic Data Pipeline — all 7 phases"
     )
-    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats', 'compare'")
+    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats', 'compare', 'agreement'")
     parser.add_argument("--samples", type=int, default=50, help="Q&A pairs to generate (default: 50)")
     parser.add_argument("--generation-model", type=str, default=None, dest="generation_model",
                         help="Generation model override (default: LLM_MODEL from .env)")
@@ -150,6 +151,15 @@ def main() -> None:
     if args.command == "compare":
         from phase6_analysis import run_multi_batch_comparison
         run_multi_batch_comparison(base_output)
+        return
+
+    if args.command == "agreement":
+        if not args.batch_label:
+            print("Error: --batch-label is required for the 'agreement' subcommand.")
+            print("  python main.py agreement --batch-label baseline-zero-shot")
+            return
+        from agreement import run_agreement
+        run_agreement(batch_label=args.batch_label, output_dir=base_output)
         return
 
     # Resolve models from CLI or config

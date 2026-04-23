@@ -14,6 +14,7 @@ Key improvements over a static correction approach:
 """
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -33,6 +34,59 @@ from phase4_failure_labeling import run_failure_labeling_phase
 from phase5_quality_eval import run_quality_eval_phase
 
 _JACCARD_SIMILARITY_THRESHOLD = 0.8  # pairs above this are considered near-duplicates
+
+
+def log_iteration(
+    log_path: Path,
+    iteration: int,
+    failure_rate: float,
+    quality_pass: float,
+    improvement_pct: float,
+    targets_met: bool,
+    per_mode_rates: dict[str, float],
+    baseline_failure_rate: float,
+) -> None:
+    """Append one structured entry to iteration_log.json after each Phase 7 iteration."""
+    existing: list[dict] = json.loads(log_path.read_text()) if log_path.exists() else []
+
+    dominant_failures = sorted(
+        [(m, r) for m, r in per_mode_rates.items() if r > 0.0],
+        key=lambda x: x[1],
+        reverse=True,
+    )
+    change_desc = (
+        ", ".join(f"{m} ({r*100:.0f}%)" for m, r in dominant_failures[:3])
+        if dominant_failures
+        else "no failures detected"
+    )
+
+    entry = {
+        "iteration": iteration,
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "phase": "7",
+        "change": f"human_feedback prompts, failure context injected targeting: {change_desc}",
+        "hypothesis": "Data-driven failure context steers generation away from observed weak spots",
+        "result": (
+            f"failure={failure_rate*100:.1f}% "
+            f"(Δ{(baseline_failure_rate - failure_rate)*100:+.1f}pp), "
+            f"quality_pass={quality_pass*100:.1f}%, "
+            f"improvement={improvement_pct:.1f}%"
+        ),
+        "decision": "keep" if targets_met else ("modify" if iteration == 1 else "continue"),
+        "next_step": (
+            "targets met — done" if targets_met
+            else "re-run with updated failure context from this iteration"
+        ),
+        "metrics": {
+            "failure_rate": round(failure_rate, 4),
+            "quality_pass_rate": round(quality_pass, 4),
+            "improvement_pct": round(improvement_pct, 2),
+            "targets_met": targets_met,
+            "per_mode_failure_rates": {m: round(r, 4) for m, r in per_mode_rates.items()},
+        },
+    }
+    existing.append(entry)
+    log_path.write_text(json.dumps(existing, indent=2))
 
 _MODE_HINTS: dict[str, str] = {
     "incomplete_answer": "Ensure every repair step is fully described; do not omit intermediate steps.",
@@ -217,6 +271,23 @@ def run_correction_phase(
             and corrected_quality_pass >= CORRECTION_TARGET_QUALITY_PASS
             and improvement_pct >= CORRECTION_TARGET_IMPROVEMENT
         )
+
+        per_mode_rates = {
+            m: float(corrected_fdf[m].mean())
+            for m in FAILURE_MODE_NAMES
+            if m in corrected_fdf.columns
+        }
+        log_iteration(
+            log_path=corrected_dir / "iteration_log.json",
+            iteration=iteration,
+            failure_rate=corrected_failure_rate,
+            quality_pass=corrected_quality_pass,
+            improvement_pct=improvement_pct,
+            targets_met=all_targets_met,
+            per_mode_rates=per_mode_rates,
+            baseline_failure_rate=baseline_failure_rate,
+        )
+
         if all_targets_met:
             print(f"\n  All targets met after {iteration} iteration(s). Stopping early.")
             break
