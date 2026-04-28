@@ -16,7 +16,7 @@ import yaml
 from pydantic import BaseModel, Field, create_model
 
 from llm_client import judge_batch
-from schema import QualityEvalResult, ValidatedResult, qa_format_kwargs
+from schema import QualityEvalResult, ValidatedResult, qa_format_kwargs, strip_respond_line
 
 # Default config directory relative to this file
 DEFAULT_QUALITY_DIMS_DIR = Path(__file__).parent / "quality_dimensions"
@@ -66,14 +66,6 @@ def load_quality_dimensions(config_dir: Path = DEFAULT_QUALITY_DIMS_DIR) -> list
 QUALITY_DIMENSIONS: list[QualityDimension] = load_quality_dimensions()
 
 
-def _strip_respond_line(text: str) -> str:
-    """Remove the trailing 'Respond with exactly one digit...' instruction line."""
-    lines = text.rstrip("\n").splitlines()
-    while lines and lines[-1].strip().startswith("Respond with"):
-        lines.pop()
-    return "\n".join(lines).rstrip()
-
-
 def _make_quality_batch_model(dim_names: list[str]) -> type[BaseModel]:
     return create_model(
         "QualityEvalBatch",
@@ -82,14 +74,15 @@ def _make_quality_batch_model(dim_names: list[str]) -> type[BaseModel]:
 
 
 class QualityEvaluator:
-    def __init__(self, judge_model: str):
+    def __init__(self, judge_model: str, batch_label: str = ""):
         self.model = judge_model
+        self.batch_label = batch_label
         self._batch_model = _make_quality_batch_model([d.name for d in QUALITY_DIMENSIONS])
 
     def _build_batch_prompt(self, qa, category: str) -> str:
         sections = []
         for dim in QUALITY_DIMENSIONS:
-            criteria = _strip_respond_line(
+            criteria = strip_respond_line(
                 dim.prompt_template.format(**qa_format_kwargs(qa, category))
             )
             sections.append(f"--- {dim.name} ---\n{criteria}")
@@ -103,8 +96,15 @@ class QualityEvaluator:
 
     def evaluate(self, result: ValidatedResult) -> QualityEvalResult:
         qa = result.qa_pair
+        obs_context = {
+            "trace_id": result.trace_id,
+            "batch_label": self.batch_label,
+            "phase": 5,
+            "category": result.category,
+            "prompt_strategy": "",
+        }
         try:
-            batch = judge_batch(self._build_batch_prompt(qa, result.category), self._batch_model, self.model)
+            batch = judge_batch(self._build_batch_prompt(qa, result.category), self._batch_model, self.model, obs_context=obs_context)
             scores = batch.model_dump()
         except Exception as e:
             print(f"\n    [judge_batch error] {type(e).__name__}: {str(e)[:120]}")
@@ -124,7 +124,7 @@ def run_quality_eval_phase(
     judge_model: str,
     output_dir: Path,
 ) -> pd.DataFrame:
-    evaluator = QualityEvaluator(judge_model=judge_model)
+    evaluator = QualityEvaluator(judge_model=judge_model, batch_label=output_dir.name)
     eval_results: list[QualityEvalResult] = []
 
     for i, result in enumerate(valid_results):

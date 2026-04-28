@@ -15,7 +15,7 @@ import yaml
 from pydantic import BaseModel, Field, create_model
 
 from llm_client import judge_batch
-from schema import FAILURE_MODE_FIELDS, FailureLabelResult, ValidatedResult, qa_format_kwargs
+from schema import FAILURE_MODE_FIELDS, FailureLabelResult, ValidatedResult, qa_format_kwargs, strip_respond_line
 
 # Default config directory relative to this file
 DEFAULT_FAILURE_MODES_DIR = Path(__file__).parent / "failure_modes"
@@ -59,14 +59,6 @@ def load_failure_modes(config_dir: Path = DEFAULT_FAILURE_MODES_DIR) -> list[Fai
     return modes
 
 
-def _strip_respond_line(text: str) -> str:
-    """Remove the trailing 'Respond with exactly one digit...' instruction line."""
-    lines = text.rstrip("\n").splitlines()
-    while lines and lines[-1].strip().startswith("Respond with"):
-        lines.pop()
-    return "\n".join(lines).rstrip()
-
-
 def _make_failure_batch_model(mode_names: list[str]) -> type[BaseModel]:
     return create_model(
         "FailureLabelBatch",
@@ -75,16 +67,17 @@ def _make_failure_batch_model(mode_names: list[str]) -> type[BaseModel]:
 
 
 class FailureLabeler:
-    def __init__(self, judge_model: str, failure_modes: list[FailureMode], additional_context: str = ""):
+    def __init__(self, judge_model: str, failure_modes: list[FailureMode], additional_context: str = "", batch_label: str = ""):
         self.model = judge_model
         self.failure_modes = failure_modes
         self.additional_context = additional_context
+        self.batch_label = batch_label
         self._batch_model = _make_failure_batch_model([m.name for m in failure_modes])
 
     def _build_batch_prompt(self, qa) -> str:
         sections = []
         for mode in self.failure_modes:
-            criteria = _strip_respond_line(mode.prompt_template.format(**qa_format_kwargs(qa)))
+            criteria = strip_respond_line(mode.prompt_template.format(**qa_format_kwargs(qa)))
             sections.append(f"--- {mode.name} ---\n{criteria}")
         body = "\n\n".join(sections)
         footer = (
@@ -98,8 +91,15 @@ class FailureLabeler:
 
     def evaluate(self, result: ValidatedResult) -> FailureLabelResult:
         qa = result.qa_pair
+        obs_context = {
+            "trace_id": result.trace_id,
+            "batch_label": self.batch_label,
+            "phase": 4,
+            "category": result.category,
+            "prompt_strategy": "",
+        }
         try:
-            batch = judge_batch(self._build_batch_prompt(qa), self._batch_model, self.model)
+            batch = judge_batch(self._build_batch_prompt(qa), self._batch_model, self.model, obs_context=obs_context)
             scores = batch.model_dump()
         except Exception as e:
             print(f"\n    [judge_batch error] {type(e).__name__}: {str(e)[:120]}")
@@ -124,7 +124,7 @@ def run_failure_labeling_phase(
     failure_modes = load_failure_modes(config_dir)
     print(f"Loaded {len(failure_modes)} failure modes from {config_dir}")
 
-    labeler = FailureLabeler(judge_model=judge_model, failure_modes=failure_modes, additional_context=additional_context)
+    labeler = FailureLabeler(judge_model=judge_model, failure_modes=failure_modes, additional_context=additional_context, batch_label=output_dir.name)
     label_results: list[FailureLabelResult] = []
 
     for i, result in enumerate(valid_results):

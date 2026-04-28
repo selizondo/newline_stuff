@@ -81,26 +81,23 @@ def run_agreement(batch_label: str, output_dir: Path, threshold: float = AGREEME
     # Compute per-dimension agreement
     dim_results: dict[str, dict] = {}
     for human_key, llm_key in HUMAN_TO_LLM.items():
-        agreements = []
-        for h, l in joined:
-            h_val = h.get(human_key)
-            l_val = l.get(llm_key)
-            if h_val is None or l_val is None:
-                continue
-            agreements.append(int(h_val) == int(l_val))
+        pairs = [
+            (int(h.get(human_key)), int(l.get(llm_key)))
+            for h, l in joined
+            if h.get(human_key) is not None and l.get(llm_key) is not None
+        ]
 
-        if not agreements:
+        if not pairs:
             continue
 
-        rate = sum(agreements) / len(agreements)
-        n_agree = sum(agreements)
-        n_total = len(agreements)
+        n_total = len(pairs)
+        n_agree = sum(1 for hv, lv in pairs if hv == lv)
+        rate = n_agree / n_total
 
-        # True positive rate (both say 1), true negative rate (both say 0)
-        tp = sum(1 for h, l in joined if h.get(human_key) == 1 and l.get(llm_key) == 1)
-        tn = sum(1 for h, l in joined if h.get(human_key) == 0 and l.get(llm_key) == 0)
-        fp = sum(1 for h, l in joined if h.get(human_key) == 0 and l.get(llm_key) == 1)
-        fn = sum(1 for h, l in joined if h.get(human_key) == 1 and l.get(llm_key) == 0)
+        tp = sum(1 for hv, lv in pairs if hv == 1 and lv == 1)
+        tn = sum(1 for hv, lv in pairs if hv == 0 and lv == 0)
+        fp = sum(1 for hv, lv in pairs if hv == 0 and lv == 1)
+        fn = sum(1 for hv, lv in pairs if hv == 1 and lv == 0)
 
         dim_results[human_key] = {
             "human_key": human_key,

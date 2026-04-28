@@ -16,6 +16,7 @@ from openai import OpenAI, RateLimitError
 from pydantic import BaseModel
 
 from config import Settings, get_settings
+from observability import record_llm_generation
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -59,11 +60,21 @@ def get_judge_client(settings: Settings | None = None) -> OpenAI:
     return _judge_client
 
 
+def _instructor_mode(base_url: str) -> instructor.Mode:
+    """Use JSON mode for Ollama; TOOLS mode for cloud providers."""
+    if "localhost" in base_url or "11434" in base_url:
+        return instructor.Mode.JSON
+    return instructor.Mode.TOOLS
+
+
 def get_instructor_client(settings: Settings | None = None) -> instructor.Instructor:
     """Return the cached Instructor-patched generation client."""
     global _gen_instructor_client
     if _gen_instructor_client is None:
-        _gen_instructor_client = instructor.from_openai(get_client(settings))
+        s = settings or get_settings()
+        _gen_instructor_client = instructor.from_openai(
+            get_client(settings), mode=_instructor_mode(s.base_url)
+        )
     return _gen_instructor_client
 
 
@@ -71,7 +82,10 @@ def get_judge_instructor_client(settings: Settings | None = None) -> instructor.
     """Return the cached Instructor-patched judge client (for batch structured evaluation)."""
     global _judge_instructor_client
     if _judge_instructor_client is None:
-        _judge_instructor_client = instructor.from_openai(get_judge_client(settings))
+        s = settings or get_settings()
+        _judge_instructor_client = instructor.from_openai(
+            get_judge_client(settings), mode=_instructor_mode(s.judge_base_url)
+        )
     return _judge_instructor_client
 
 
@@ -94,6 +108,7 @@ def instructor_complete(
     temperature: float = _DEFAULT_TEMPERATURE,
     max_tokens: int = _DEFAULT_MAX_TOKENS,
     max_retries: int = _DEFAULT_MAX_RETRIES,
+    obs_context: dict | None = None,
 ) -> T:
     """Use Instructor to generate a structured Pydantic object from the generation LLM.
 
@@ -103,6 +118,7 @@ def instructor_complete(
     client = get_instructor_client()
     rate_limit_delay = _get_gen_rate_limit_delay()
     delay = _DEFAULT_BACKOFF_DELAY
+    _t0 = time.monotonic()
     for attempt in range(max_retries + 1):
         try:
             result = client.chat.completions.create(
@@ -113,6 +129,14 @@ def instructor_complete(
                 max_tokens=max_tokens,
                 max_retries=_INSTRUCTOR_INTERNAL_RETRIES,
             )
+            record_llm_generation(
+                obs_context=obs_context,
+                name="phase1.instructor_complete",
+                model=model,
+                input_messages=messages,
+                output=result.model_dump() if hasattr(result, "model_dump") else str(result),
+                duration_ms=(time.monotonic() - _t0) * 1000,
+            )
             time.sleep(rate_limit_delay)
             return result
         except InstructorRetryException as e:
@@ -122,6 +146,16 @@ def instructor_complete(
             print(f"  last response: {e.last_completion}")
             e.validation_errors = _errors
             e.validation_attempts = e.n_attempts
+            record_llm_generation(
+                obs_context=obs_context,
+                name="phase1.instructor_complete",
+                model=model,
+                input_messages=messages,
+                output=None,
+                duration_ms=(time.monotonic() - _t0) * 1000,
+                error=e,
+                extra_attributes={"validation_attempts": e.n_attempts},
+            )
             raise
         except RateLimitError:
             if attempt == max_retries:
@@ -145,7 +179,7 @@ _JUDGE_BATCH_SYSTEM_PROMPT = (
 )
 
 
-def judge_binary(prompt: str, model: str, default_on_error: int = 0) -> int:
+def judge_binary(prompt: str, model: str, default_on_error: int = 0, obs_context: dict | None = None) -> int:
     """Call the judge endpoint and return 0 or 1.
 
     default_on_error controls which side to fail safe:
@@ -156,11 +190,30 @@ def judge_binary(prompt: str, model: str, default_on_error: int = 0) -> int:
         {"role": "system", "content": _JUDGE_SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
     ]
+    _t0 = time.monotonic()
     try:
         raw = chat_complete(messages, model=model, temperature=0.1, max_tokens=10, use_judge_client=True)
         digit = raw.strip()[0] if raw.strip() else ""
-        return int(digit) if digit in ("0", "1") else default_on_error
-    except Exception:
+        result = int(digit) if digit in ("0", "1") else default_on_error
+        record_llm_generation(
+            obs_context=obs_context,
+            name="phase3.judge_binary",
+            model=model,
+            input_messages=messages,
+            output=str(result),
+            duration_ms=(time.monotonic() - _t0) * 1000,
+        )
+        return result
+    except Exception as e:
+        record_llm_generation(
+            obs_context=obs_context,
+            name="phase3.judge_binary",
+            model=model,
+            input_messages=messages,
+            output=None,
+            duration_ms=(time.monotonic() - _t0) * 1000,
+            error=e,
+        )
         return default_on_error
 
 
@@ -169,6 +222,7 @@ def judge_batch(
     response_model: Type[T],
     model: str,
     max_retries: int = _DEFAULT_MAX_RETRIES,
+    obs_context: dict | None = None,
 ) -> T:
     """Call the judge endpoint with Instructor to score all criteria in one call.
 
@@ -185,6 +239,8 @@ def judge_batch(
         {"role": "user", "content": prompt},
     ]
     delay = _DEFAULT_BACKOFF_DELAY
+    _t0 = time.monotonic()
+    _gen_name = f"phase{obs_context.get('phase', '?')}.judge_batch" if obs_context else "judge_batch"
     for attempt in range(max_retries + 1):
         try:
             result = client.chat.completions.create(
@@ -194,6 +250,14 @@ def judge_batch(
                 temperature=0.0,
                 max_tokens=500,
                 max_retries=_INSTRUCTOR_INTERNAL_RETRIES,
+            )
+            record_llm_generation(
+                obs_context=obs_context,
+                name=_gen_name,
+                model=model,
+                input_messages=messages,
+                output=result.model_dump() if hasattr(result, "model_dump") else str(result),
+                duration_ms=(time.monotonic() - _t0) * 1000,
             )
             time.sleep(rate_limit_delay)
             return result
@@ -209,6 +273,15 @@ def judge_batch(
                 time.sleep(delay)
                 delay *= _BACKOFF_MULTIPLIER
                 continue
+            record_llm_generation(
+                obs_context=obs_context,
+                name=_gen_name,
+                model=model,
+                input_messages=messages,
+                output=None,
+                duration_ms=(time.monotonic() - _t0) * 1000,
+                error=e,
+            )
             raise
         except RateLimitError:
             if attempt == max_retries:

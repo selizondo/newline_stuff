@@ -14,6 +14,14 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # Core Q&A schema
 # ---------------------------------------------------------------------------
 
+def strip_respond_line(text: str) -> str:
+    """Remove trailing 'Respond with exactly one digit...' instruction lines from a prompt."""
+    lines = text.rstrip("\n").splitlines()
+    while lines and lines[-1].strip().startswith("Respond with"):
+        lines.pop()
+    return "\n".join(lines).rstrip()
+
+
 def qa_format_kwargs(qa: "QAPair", category: str = "") -> dict:
     """Return formatted QAPair fields for use in prompt .format() calls.
 

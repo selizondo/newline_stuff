@@ -21,6 +21,7 @@ class Baseline:
     label: str
     strategy: str
     active: bool = True
+    run_correction: bool = False
 
 
 @functools.lru_cache(maxsize=None)
@@ -33,6 +34,11 @@ def load_baselines() -> tuple[Baseline, ...]:
 def active_baselines() -> list[Baseline]:
     """Return baselines with active=true, in config order."""
     return [b for b in load_baselines() if b.active]
+
+
+def run_correctionable_baselines() -> list[Baseline]:
+    """Return active baselines eligible for Phase 7 run_correctionion (run_correction=true)."""
+    return [b for b in load_baselines() if b.active and b.run_correction]
 
 
 def baseline_labels() -> set[str]:

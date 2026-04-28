@@ -21,8 +21,8 @@ _MIN_TIP_LEN = 30
 _SAFETY_GENERIC_PHRASES = frozenset(["be careful", "use caution", "stay safe", "good luck"])
 _TOOL_BLOCKLIST = frozenset(["professional-grade", "trade-only", "specialty"])
 
-# Batch-level threshold: each category must be ≥ 18% of the valid set
-_MIN_CATEGORY_FRACTION = 0.18
+# Batch-level threshold: each category must be ≥ 20% of the valid set
+_MIN_CATEGORY_FRACTION = 0.20
 
 
 # ---------------------------------------------------------------------------

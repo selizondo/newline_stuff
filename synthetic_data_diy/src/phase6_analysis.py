@@ -1,6 +1,8 @@
 """
 Phase 6: Failure & Quality Analysis
-Produces all required visualizations and a structured JSON report.
+Produces all required visualizations, a structured JSON report, and a
+self-contained HTML summary page (analysis_summary.html) that embeds all
+charts with auto-generated observations.
 
 Auto-loads benchmark_eval.csv (written by Phase 3) from the same output_dir
 to compute an apples-to-apples quality gap: both the benchmark and generated
@@ -8,7 +10,9 @@ data are compared on the same metric — overall_quality_pass rate — so the
 comparison is methodologically valid.
 """
 
+import base64
 import json
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib
@@ -253,6 +257,208 @@ class FailureAnalyzer:
         )
 
 
+    # ------------------------------------------------------------------
+    # HTML summary page: self-contained, base64-embedded charts
+    # ------------------------------------------------------------------
+    def generate_summary_page(
+        self,
+        output_dir: Path,
+        summary: AnalysisSummary,
+        batch_label: str = "",
+    ) -> Path:
+        """Write analysis_summary.html to output_dir with embedded charts and observations."""
+
+        charts = [
+            ("failure_heatmap.png", "Failure Mode Heatmap"),
+            ("failure_rates_by_category.png", "Failure Rates by Category"),
+            ("failure_mode_trends.png", "Failure Mode Trends: Before vs After Correction"),
+            ("quality_dimensions.png", "Quality Dimension Pass Rates"),
+            ("benchmark_comparison.png", "Generated vs Benchmark Quality"),
+            ("failure_correlations.png", "Failure Mode Correlations"),
+        ]
+
+        def _embed(fname: str) -> str:
+            p = output_dir / fname
+            return base64.b64encode(p.read_bytes()).decode() if p.exists() else ""
+
+        def _obs_heatmap() -> list[str]:
+            mode_rates = {m: float(self.fdf[m].mean()) for m in FAILURE_MODE_NAMES if m in self.fdf.columns}
+            if not mode_rates:
+                return ["No failure mode data available."]
+            top = max(mode_rates, key=mode_rates.__getitem__)
+            low = min(mode_rates, key=mode_rates.__getitem__)
+            n_any = int((self.fdf.get("overall_failure", pd.Series(dtype=int)) == 1).sum())
+            return [
+                f"Most prevalent failure mode: <strong>{_label(top)}</strong> at {mode_rates[top]*100:.1f}%.",
+                f"{n_any} of {len(self.fdf)} samples ({n_any/len(self.fdf)*100:.1f}%) have at least one failure.",
+                f"Least common failure mode: <strong>{_label(low)}</strong> at {mode_rates[low]*100:.1f}%.",
+            ]
+
+        def _obs_by_category() -> list[str]:
+            if "category" not in self.fdf.columns or "overall_failure" not in self.fdf.columns:
+                return ["No category data available."]
+            cat_rates = self.fdf.groupby("category")["overall_failure"].mean()
+            worst, best = cat_rates.idxmax(), cat_rates.idxmin()
+            obs = [
+                f"<strong>{_label(worst)}</strong> has the highest failure rate ({cat_rates[worst]*100:.1f}%).",
+                f"<strong>{_label(best)}</strong> has the lowest failure rate ({cat_rates[best]*100:.1f}%).",
+            ]
+            worst_cat_df = self.fdf[self.fdf["category"] == worst]
+            mode_rates = {m: float(worst_cat_df[m].mean()) for m in FAILURE_MODE_NAMES if m in worst_cat_df.columns}
+            if mode_rates:
+                top = max(mode_rates, key=mode_rates.__getitem__)
+                obs.append(f"Dominant failure in {_label(worst)}: <strong>{_label(top)}</strong> ({mode_rates[top]*100:.1f}%).")
+            return obs
+
+        def _obs_trends() -> list[str]:
+            rate = float(self.fdf["overall_failure"].mean()) if "overall_failure" in self.fdf.columns else 0.0
+            obs = [f"Baseline overall failure rate: <strong>{rate*100:.1f}%</strong>."]
+            if rate <= 0.15:
+                obs.append("Rate is at or below the Phase 7 stopping threshold (15%) — correction may not be needed.")
+            elif rate <= 0.30:
+                obs.append("Moderate failure rate — Phase 7 correction is recommended.")
+            else:
+                obs.append("High failure rate — Phase 7 correction is strongly recommended.")
+            obs.append("Corrected bars appear only after Phase 7 completes and Phase 6 re-runs.")
+            return obs
+
+        def _obs_quality() -> list[str]:
+            thresholds = {d.name: d.threshold for d in QUALITY_DIMENSIONS}
+            pass_rates = {d.name: float(self.qdf[d.name].mean()) for d in QUALITY_DIMENSIONS if d.name in self.qdf.columns}
+            if not pass_rates:
+                return ["No quality data available."]
+            passed = [n for n in pass_rates if pass_rates[n] >= thresholds.get(n, 0.8)]
+            failed = [n for n in pass_rates if pass_rates[n] < thresholds.get(n, 0.8)]
+            overall_qp = float(self.qdf["overall_quality_pass"].mean()) if "overall_quality_pass" in self.qdf.columns else 0.0
+            obs = [f"Overall quality pass rate: <strong>{overall_qp*100:.1f}%</strong> (Phase 7 target ≥80%)."]
+            if passed:
+                obs.append(f"{len(passed)} dimension(s) meet threshold: {', '.join(_label(n) for n in passed)}.")
+            if failed:
+                worst_dim = min(failed, key=lambda n: pass_rates[n])
+                obs.append(f"Below threshold: {', '.join('<strong>' + _label(n) + '</strong>' for n in failed)}.")
+                obs.append(f"Weakest dimension: <strong>{_label(worst_dim)}</strong> at {pass_rates[worst_dim]*100:.1f}%.")
+            return obs
+
+        def _obs_benchmark() -> list[str]:
+            if summary.overall_benchmark_gap is None:
+                return ["Benchmark data not available — run Phase 3 first to enable gap analysis."]
+            gap = summary.overall_benchmark_gap
+            obs = [
+                (f"Benchmark leads by <strong>{gap*100:.1f}pp</strong> on overall quality pass rate." if gap > 0
+                 else f"Generated data leads benchmark by <strong>{abs(gap)*100:.1f}pp</strong>."),
+            ]
+            if summary.benchmark_dimension_gaps:
+                largest = max(summary.benchmark_dimension_gaps, key=lambda k: abs(summary.benchmark_dimension_gaps[k]))
+                gv = summary.benchmark_dimension_gaps[largest]
+                obs.append(f"Largest gap: <strong>{_label(largest)}</strong> ({gv*100:+.1f}pp, benchmark {'leads' if gv > 0 else 'trails'}).")
+            if gap <= 0:
+                obs.append("Generated data matches or exceeds benchmark quality.")
+            elif gap <= 0.1:
+                obs.append("Gap is small (&lt;10pp) — generated quality is close to benchmark.")
+            else:
+                obs.append("Gap is significant (&gt;10pp) — prompt tuning or Phase 7 correction advised.")
+            return obs
+
+        def _obs_correlations() -> list[str]:
+            avail = [m for m in FAILURE_MODE_NAMES if m in self.fdf.columns]
+            if len(avail) < 2:
+                return ["Insufficient data for correlation analysis."]
+            corr = self.fdf[avail].corr()
+            highest, pair = 0.0, ("", "")
+            for i, m1 in enumerate(avail):
+                for m2 in avail[i + 1:]:
+                    v = corr.loc[m1, m2]
+                    if abs(v) > abs(highest):
+                        highest, pair = v, (m1, m2)
+            obs = []
+            if pair[0]:
+                direction = "positive" if highest > 0 else "negative"
+                obs.append(f"Highest correlation: <strong>{_label(pair[0])}</strong> &amp; <strong>{_label(pair[1])}</strong> ({highest:+.2f}, {direction}).")
+                if highest > 0.5:
+                    obs.append("Strong positive correlation — these modes likely share a root cause; fixing one may fix the other.")
+                elif highest < -0.3:
+                    obs.append("Negative correlation — improvements in one mode may coincide with regressions in the other.")
+            obs.append("Modes near zero correlation are largely independent and must be addressed separately.")
+            return obs
+
+        all_obs = [_obs_heatmap(), _obs_by_category(), _obs_trends(), _obs_quality(), _obs_benchmark(), _obs_correlations()]
+
+        def _metric_card(title: str, value: str, color: str) -> str:
+            return (
+                f'<div class="metric-card" style="border-top:4px solid {color};">'
+                f'<div class="metric-value" style="color:{color};">{value}</div>'
+                f'<div class="metric-label">{title}</div></div>'
+            )
+
+        f_color = "#e74c3c" if summary.overall_failure_rate > 0.15 else "#2ecc71"
+        q_color = "#2ecc71" if summary.overall_quality_pass_rate >= 0.80 else "#e74c3c"
+        gap_text = f"{summary.overall_benchmark_gap*100:+.1f}pp" if summary.overall_benchmark_gap is not None else "N/A"
+        cards_html = "".join([
+            _metric_card("Overall Failure Rate", f"{summary.overall_failure_rate*100:.1f}%", f_color),
+            _metric_card("Quality Pass Rate", f"{summary.overall_quality_pass_rate*100:.1f}%", q_color),
+            _metric_card("Problematic Samples", str(len(summary.most_problematic_items)), "#e67e22"),
+            _metric_card("Benchmark Gap", gap_text, "#3498db"),
+        ])
+
+        sections_html = ""
+        for (fname, title), obs_list in zip(charts, all_obs):
+            data_uri = _embed(fname)
+            img_html = (
+                f'<img src="data:image/png;base64,{data_uri}" alt="{title}" class="chart-img">'
+                if data_uri else '<p class="no-chart">Chart not yet available.</p>'
+            )
+            obs_html = "".join(f"<li>{o}</li>" for o in obs_list)
+            sections_html += (
+                f'<div class="chart-section"><h2>{title}</h2>{img_html}'
+                f'<div class="observations"><h3>Observations</h3><ul>{obs_html}</ul></div></div>'
+            )
+
+        title_label = f"Analysis Summary — {batch_label}" if batch_label else "Analysis Summary"
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>{title_label}</title>
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{font-family:system-ui,sans-serif;background:#f5f5f5;color:#333}}
+header{{background:#1a1a2e;color:#fff;padding:2rem}}
+header h1{{font-size:1.6rem}}
+header p{{margin-top:.4rem;font-size:.9rem;opacity:.7}}
+.container{{max-width:1100px;margin:0 auto;padding:2rem 1rem}}
+.metrics{{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:2rem}}
+.metric-card{{background:#fff;border-radius:8px;padding:1rem 1.5rem;flex:1;min-width:150px;box-shadow:0 1px 4px rgba(0,0,0,.1)}}
+.metric-value{{font-size:2rem;font-weight:700}}
+.metric-label{{font-size:.75rem;color:#666;margin-top:.3rem;text-transform:uppercase;letter-spacing:.05em}}
+.chart-section{{background:#fff;border-radius:8px;padding:1.5rem;margin-bottom:2rem;box-shadow:0 1px 4px rgba(0,0,0,.1)}}
+.chart-section h2{{font-size:1.15rem;margin-bottom:1rem;border-bottom:2px solid #eee;padding-bottom:.5rem}}
+.chart-img{{width:100%;height:auto;border-radius:4px}}
+.no-chart{{color:#999;font-style:italic;padding:2rem;text-align:center}}
+.observations{{margin-top:1rem;background:#f9f9f9;border-radius:6px;padding:1rem 1.2rem}}
+.observations h3{{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:.6rem}}
+.observations ul{{padding-left:1.2rem}}
+.observations li{{font-size:.9rem;line-height:1.6;margin-bottom:.3rem;color:#444}}
+footer{{text-align:center;font-size:.75rem;color:#999;padding:2rem}}
+</style>
+</head>
+<body>
+<header><h1>{title_label}</h1><p>Generated {timestamp} &bull; {summary.total_samples} samples</p></header>
+<div class="container">
+<div class="metrics">{cards_html}</div>
+{sections_html}
+</div>
+<footer>Synthetic Data DIY — Phase 6 Analysis</footer>
+</body>
+</html>"""
+
+        out_path = output_dir / "analysis_summary.html"
+        out_path.write_text(html)
+        print(f"  Saved → {out_path}")
+        return out_path
+
+
 def _is_quality_data_clean(df: pd.DataFrame) -> bool:
     """Return False if more than 40% of rows have all-zero quality scores (rate-limit corruption)."""
     dim_cols = [c for c in QUALITY_DIM_NAMES if c in df.columns]
@@ -459,6 +665,8 @@ def run_analysis_phase(
     report_path = output_dir / "analysis_report.json"
     report_path.write_text(json.dumps(summary.model_dump(), indent=2))
     print(f"  Saved → {report_path}")
+
+    analyzer.generate_summary_page(output_dir, summary, batch_label=output_dir.name)
 
     print(f"\nAnalysis summary:")
     print(f"  Overall failure rate : {summary.overall_failure_rate*100:.1f}%")
