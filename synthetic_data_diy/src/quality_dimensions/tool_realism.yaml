@@ -4,9 +4,6 @@ threshold: 0.95
 prompt_template: |
   Evaluate D3 — Tool Realism.
 
-  Question: {question}
-  Tools Required: {tools}
-
   Tools PASS if ALL of them:
   - Cost less than ~$50 each
   - Are available at a typical hardware store (Home Depot, Lowe's, Ace Hardware)
@@ -18,3 +15,6 @@ prompt_template: |
   FAIL example (replacing a toilet fill valve): "Pipe threading machine, pressure test gauge."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.
+
+  Question: {question}
+  Tools Required: {tools}

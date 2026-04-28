@@ -3,9 +3,6 @@ description: Requires professional or specialty tools unavailable to homeowners
 prompt_template: |
   Evaluate whether this DIY repair answer requires UNREALISTIC TOOLS for a homeowner.
 
-  Question: {question}
-  Tools Required: {tools}
-
   Tools are UNREALISTIC if any single tool:
   - Costs more than ~$50 (e.g., oscilloscope, professional pipe threader, thermal imaging camera)
   - Requires a professional license to purchase or use (e.g., refrigerant recovery equipment)
@@ -17,3 +14,6 @@ prompt_template: |
   FAIL example (faucet cartridge replacement): "Pipe threading machine, pressure test gauge, tube bender."
 
   Respond with exactly one digit: 1 if UNREALISTIC TOOLS (failure), 0 if REALISTIC (pass).
+
+  Question: {question}
+  Tools Required: {tools}

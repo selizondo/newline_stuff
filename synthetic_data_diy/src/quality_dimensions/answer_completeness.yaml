@@ -4,10 +4,6 @@ threshold: 0.85
 prompt_template: |
   Evaluate D1 — Answer Completeness.
 
-  Question: {question}
-  Answer: {answer}
-  Steps: {steps}
-
   The answer PASSES if it contains enough detail for a homeowner to complete the repair end to end:
   - Covers all key stages of the repair (not just the first or final step)
   - Does not skip over significant intermediate stages
@@ -22,3 +18,7 @@ prompt_template: |
   FAIL example (faucet cartridge replacement): "Remove the old cartridge and put in the new one. Turn the water back on and check for leaks."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.
+
+  Question: {question}
+  Answer: {answer}
+  Steps: {steps}

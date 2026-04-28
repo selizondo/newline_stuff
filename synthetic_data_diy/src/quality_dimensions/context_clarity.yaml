@@ -4,10 +4,6 @@ threshold: 0.90
 prompt_template: |
   Evaluate D5 — Context Clarity.
 
-  Question: {question}
-  Equipment Problem: {equipment_problem}
-  Answer: {answer}
-
   The answer PASSES if:
   - It directly addresses the specific equipment_problem stated in the question
   - It does not give generic repair advice that could apply to any similar problem
@@ -22,3 +18,7 @@ prompt_template: |
   FAIL example (dryer spins but no heat): "Clean the lint trap, check the power outlet, and make sure the dryer is level."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.
+
+  Question: {question}
+  Equipment Problem: {equipment_problem}
+  Answer: {answer}

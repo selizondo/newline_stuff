@@ -4,10 +4,6 @@ threshold: 0.95
 prompt_template: |
   Evaluate D4 — Appropriate Scope.
 
-  Question: {question}
-  Answer: {answer}
-  Steps: {steps}
-
   The scope is APPROPRIATE if:
   - The fix targets only the broken component, not the entire system
   - An average homeowner with basic tools could complete it
@@ -23,3 +19,7 @@ prompt_template: |
   FAIL example (dripping faucet): "Remove the entire faucet assembly, cut and re-solder the supply lines, and install a new faucet unit."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.
+
+  Question: {question}
+  Answer: {answer}
+  Steps: {steps}

@@ -3,10 +3,6 @@ description: Solution is disproportionately complex for the described problem
 prompt_template: |
   Evaluate whether this DIY repair answer is OVERCOMPLICATED.
 
-  Question: {question}
-  Answer: {answer}
-  Steps: {steps}
-
   A solution is OVERCOMPLICATED if:
   - It requires completely disassembling equipment when a targeted component fix would resolve the problem
   - The number and complexity of steps is grossly out of proportion to the described problem
@@ -19,3 +15,7 @@ prompt_template: |
   FAIL example: Dripping faucet answer instructs the homeowner to remove and replace the entire faucet unit, shut off the main water supply, and re-solder the supply lines.
 
   Respond with exactly one digit: 1 if OVERCOMPLICATED (failure), 0 if APPROPRIATELY SCOPED (pass).
+
+  Question: {question}
+  Answer: {answer}
+  Steps: {steps}

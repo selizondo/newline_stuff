@@ -4,9 +4,6 @@ threshold: 0.85
 prompt_template: |
   Evaluate D6 — Tip Usefulness.
 
-  Question: {question}
-  Tips: {tips}
-
   The tips PASS if at least one tip:
   - Is non-obvious (something a beginner would not think of)
   - Is specific to this exact repair task, not generic advice
@@ -18,3 +15,6 @@ prompt_template: |
   FAIL example: "Be careful not to overtighten. Wear gloves. Make sure to turn off the water before starting."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.
+
+  Question: {question}
+  Tips: {tips}

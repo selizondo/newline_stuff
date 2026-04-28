@@ -4,9 +4,6 @@ threshold: 0.90
 prompt_template: |
   Evaluate D2 — Safety Specificity.
 
-  Question: {question}
-  Safety Info: {safety_info}
-
   Safety info PASSES if it:
   - Names at least one specific hazard tied to this repair (e.g., "120V live circuit", "pressurized steam", "sharp sheet-metal edges")
   - Gives at least one specific protective action (e.g., "flip the circuit breaker and verify dead with a non-contact tester before touching wires")
@@ -21,3 +18,6 @@ prompt_template: |
   FAIL example (replacing a light switch): "Always be careful when working with electricity. Wear gloves and work in a dry area."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.
+
+  Question: {question}
+  Safety Info: {safety_info}
