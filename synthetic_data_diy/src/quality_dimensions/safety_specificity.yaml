@@ -1,16 +1,23 @@
 name: safety_specificity
-label: "Q4: Safety Specificity"
+label: "D2: Safety Specificity"
 threshold: 0.90
 prompt_template: |
-  Evaluate Q4 — Safety Specificity.
+  Evaluate D2 — Safety Specificity.
 
   Question: {question}
   Safety Info: {safety_info}
 
   Safety info PASSES if it:
-  - Names a specific hazard (e.g., "120V live circuit", "pressurized steam", "sharp metal edges")
-  - Gives a specific protective action (e.g., "turn off circuit breaker and verify with non-contact tester")
-  - Is at least 80 characters long
-  - Is relevant to the specific repair task
+  - Names at least one specific hazard tied to this repair (e.g., "120V live circuit", "pressurized steam", "sharp sheet-metal edges")
+  - Gives at least one specific protective action (e.g., "flip the circuit breaker and verify dead with a non-contact tester before touching wires")
+  - Is relevant to the specific repair task described in the question
+
+  Safety info FAILS if it:
+  - Mentions no specific hazard (only generic warnings like "be careful" or "use caution")
+  - Gives no actionable protective step beyond common sense
+  - Contains only advice applicable to any task, not this repair in particular
+
+  PASS example (replacing a light switch): "120V shock risk — flip the circuit breaker for that circuit and confirm no voltage with a non-contact tester before removing any wires."
+  FAIL example (replacing a light switch): "Always be careful when working with electricity. Wear gloves and work in a dry area."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.

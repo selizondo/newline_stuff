@@ -6,12 +6,15 @@ prompt_template: |
   Question: {question}
   Tips: {tips}
 
-  Tips are POOR QUALITY if they:
+  Tips are POOR QUALITY if ALL or MOST of them:
   - Are generic advice applicable to any task ("wear gloves", "be careful", "read the manual")
-  - Simply repeat information already in the main answer
-  - Are vague without actionable specifics
-  - Are not specific to the repair task described
+  - Simply restate a step already in the main answer
+  - Are vague without actionable specifics ("check for wear", "make sure it's tight")
+  - Are not specific to this particular repair task
 
-  Good tips are non-obvious, task-specific, and save the homeowner time or prevent a common mistake.
+  Tips are GOOD if at least one tip is non-obvious, task-specific, and saves the homeowner time or prevents a common mistake.
+
+  PASS example (for a toilet flapper repair): "Bring the old flapper to the hardware store — flapper sizes vary by toilet model and a wrong-size replacement will still leak."
+  FAIL example: "Always turn off the water before starting. Be careful not to damage any parts. Wear gloves if needed."
 
   Respond with exactly one digit: 1 if POOR QUALITY TIPS (failure), 0 if GOOD TIPS (pass).

@@ -1,16 +1,19 @@
 name: unrealistic_tools
 description: Requires professional or specialty tools unavailable to homeowners
 prompt_template: |
-  Evaluate whether this DIY repair answer requires UNREALISTIC TOOLS.
+  Evaluate whether this DIY repair answer requires UNREALISTIC TOOLS for a homeowner.
 
   Question: {question}
   Tools Required: {tools}
 
-  Tools are UNREALISTIC for a homeowner if they:
-  - Cost more than $50 each (e.g., oscilloscope, professional pipe threader)
-  - Require professional licensing to own/use
-  - Are not available at hardware stores (Home Depot, Lowe's, etc.)
+  Tools are UNREALISTIC if any single tool:
+  - Costs more than ~$50 (e.g., oscilloscope, professional pipe threader, thermal imaging camera)
+  - Requires a professional license to purchase or use (e.g., refrigerant recovery equipment)
+  - Cannot be found at a typical hardware store (Home Depot, Lowe's, Ace Hardware)
 
-  Common realistic homeowner tools: screwdrivers, pliers, wrench, multimeter, utility knife, drill, level, etc.
+  Common realistic homeowner tools: screwdrivers, pliers, adjustable wrench, multimeter, utility knife, cordless drill, level, pipe wrench, voltage tester, tube cutter.
+
+  PASS example (faucet cartridge replacement): "Flathead screwdriver, adjustable pliers, needle-nose pliers."
+  FAIL example (faucet cartridge replacement): "Pipe threading machine, pressure test gauge, tube bender."
 
   Respond with exactly one digit: 1 if UNREALISTIC TOOLS (failure), 0 if REALISTIC (pass).

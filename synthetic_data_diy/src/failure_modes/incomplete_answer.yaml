@@ -10,7 +10,12 @@ prompt_template: |
   An answer is INCOMPLETE if it:
   - Has fewer than 3 concrete steps
   - Uses vague language like "check it", "look for issues", "repeat as needed" without specifics
-  - Omits the root cause of the problem
+  - Skips a significant intermediate stage (e.g., goes from "remove the part" to "reassemble" with nothing in between)
   - Leaves the homeowner unable to complete the repair from the information given
+
+  An answer is COMPLETE if a homeowner could follow it without needing to look up additional steps.
+
+  PASS example (complete): "Turn off the water supply valve under the sink. Remove the faucet handle by unscrewing the set screw. Pull out the cartridge. Take it to a hardware store to match the replacement. Insert the new cartridge, reassemble the handle, and restore water supply."
+  FAIL example (incomplete): "Remove the old faucet cartridge and replace it with a new one. Make sure everything is tight before turning the water back on."
 
   Respond with exactly one digit: 1 if INCOMPLETE (failure), 0 if COMPLETE (pass).

@@ -1,5 +1,5 @@
 name: missing_context
-description: Answer lacks important situational context the homeowner needs
+description: Answer fails to address the specific problem or equipment described
 prompt_template: |
   Evaluate whether this DIY repair answer is MISSING CONTEXT.
 
@@ -8,9 +8,13 @@ prompt_template: |
   Equipment Problem: {equipment_problem}
 
   Context is MISSING if the answer:
-  - Doesn't address the specific equipment or problem type mentioned in the question
-  - Assumes knowledge the homeowner may not have without explaining it
-  - Doesn't mention when to call a professional instead of DIY-ing
-  - Lacks information about how to identify the problem before starting the repair
+  - Does not address the specific equipment or failure mode stated in the question
+  - Gives generic repair steps that could apply to any similar problem rather than this specific one
+  - Fails to explain what to check or diagnose before starting the repair
+
+  Context is SUFFICIENT if the answer addresses the stated equipment_problem specifically, even if briefly.
+
+  PASS example: Question asks about a dryer that spins but produces no heat. Answer explains checking the thermal fuse specific to that failure mode.
+  FAIL example: Question asks about a dryer that spins but produces no heat. Answer gives general dryer maintenance tips without addressing the no-heat symptom.
 
   Respond with exactly one digit: 1 if MISSING CONTEXT (failure), 0 if SUFFICIENT CONTEXT (pass).

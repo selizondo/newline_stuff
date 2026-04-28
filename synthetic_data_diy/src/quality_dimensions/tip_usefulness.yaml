@@ -1,16 +1,20 @@
 name: tip_usefulness
-label: "Q5: Tip Usefulness"
+label: "D6: Tip Usefulness"
 threshold: 0.85
 prompt_template: |
-  Evaluate Q5 — Tip Usefulness.
+  Evaluate D6 — Tip Usefulness.
 
   Question: {question}
   Tips: {tips}
 
-  The tip PASSES if it:
-  - Is non-obvious (a beginner would not think of it)
-  - Is specific to this exact repair task
+  The tips PASS if at least one tip:
+  - Is non-obvious (something a beginner would not think of)
+  - Is specific to this exact repair task, not generic advice
   - Provides concrete, actionable value (saves time, prevents damage, or avoids a common mistake)
-  - Is NOT generic advice like "wear gloves" or "be careful" or "read the manual"
+
+  The tips FAIL if ALL tips are generic ("wear gloves", "be careful", "read the manual") or simply restate a step already in the main answer.
+
+  PASS example (toilet flapper replacement): "Bring the old flapper to the hardware store — sizes vary by toilet model and the wrong size will still leak even when new."
+  FAIL example: "Be careful not to overtighten. Wear gloves. Make sure to turn off the water before starting."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.

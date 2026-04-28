@@ -1,17 +1,25 @@
 name: appropriate_scope
-label: "Q7: Appropriate Scope"
+label: "D4: Appropriate Scope"
 threshold: 0.95
 prompt_template: |
-  Evaluate Q7 — Appropriate Scope.
+  Evaluate D4 — Appropriate Scope.
 
   Question: {question}
   Answer: {answer}
   Steps: {steps}
 
   The scope is APPROPRIATE if:
-  - The repair complexity matches what an average homeowner with basic tools can handle
-  - It does not recommend tearing apart an entire system when a targeted fix would work
-  - It does not recommend replacing the whole appliance/system for a repairable problem
-  - The number of steps is proportional to the complexity of the task
+  - The fix targets only the broken component, not the entire system
+  - An average homeowner with basic tools could complete it
+  - It does not recommend full appliance/system replacement when a targeted part swap would work
+  - The number and complexity of steps is proportional to the actual problem
+
+  The scope is INAPPROPRIATE if:
+  - The answer disassembles more than what is needed to reach the broken part
+  - It recommends replacing the entire appliance or system for a problem that has a single-part fix
+  - It requires trades-level techniques (soldering, pipe threading, load-bearing structural changes) for a simple household repair
+
+  PASS example (dripping faucet): "Replace the worn washer inside the faucet handle — unscrew the handle, swap the washer, reassemble."
+  FAIL example (dripping faucet): "Remove the entire faucet assembly, cut and re-solder the supply lines, and install a new faucet unit."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.

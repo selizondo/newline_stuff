@@ -1,14 +1,20 @@
 name: tool_realism
-label: "Q3: Tool Realism"
+label: "D3: Tool Realism"
 threshold: 0.95
 prompt_template: |
-  Evaluate Q3 — Tool Realism.
+  Evaluate D3 — Tool Realism.
 
+  Question: {question}
   Tools Required: {tools}
 
   Tools PASS if ALL of them:
-  - Cost less than $50 each
-  - Are available at hardware stores (Home Depot, Lowe's, Ace Hardware)
-  - Do not require professional licensing to purchase or use
+  - Cost less than ~$50 each
+  - Are available at a typical hardware store (Home Depot, Lowe's, Ace Hardware)
+  - Do not require a professional license to purchase or use
+
+  Tools FAIL if any single tool is outside what a homeowner could reasonably buy for this repair.
+
+  PASS example (replacing a toilet fill valve): "Adjustable wrench, sponge, bucket."
+  FAIL example (replacing a toilet fill valve): "Pipe threading machine, pressure test gauge."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.

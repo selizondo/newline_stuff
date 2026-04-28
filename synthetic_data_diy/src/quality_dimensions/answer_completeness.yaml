@@ -1,8 +1,8 @@
 name: answer_completeness
-label: "Q9: Answer Completeness"
+label: "D1: Answer Completeness"
 threshold: 0.85
 prompt_template: |
-  Evaluate Q9 — Answer Completeness.
+  Evaluate D1 — Answer Completeness.
 
   Question: {question}
   Answer: {answer}
@@ -10,12 +10,15 @@ prompt_template: |
 
   The answer PASSES if it contains enough detail for a homeowner to complete the repair end to end:
   - Covers all key stages of the repair (not just the first or final step)
-  - Does not stop short or skip over significant intermediate stages
-  - A homeowner could perform the repair using only the information given, without needing to look up additional guidance
+  - Does not skip over significant intermediate stages
+  - A homeowner could perform the repair using only the information given
 
   The answer FAILS if:
-  - It describes part of the repair but omits major stages
-  - It relies on the reader already knowing how to do a key step
+  - It describes part of the repair but omits major stages (e.g., jumps from "remove the part" directly to "reassemble")
+  - It relies on the reader already knowing how to do a critical step
   - It is so brief that a homeowner would be left guessing what to do next
+
+  PASS example (faucet cartridge replacement): "Turn off the supply valve under the sink. Remove the handle screw and pull off the handle. Pull out the cartridge and take it to the hardware store to match the replacement. Insert the new cartridge, reinstall the handle, and restore water supply. Check for leaks."
+  FAIL example (faucet cartridge replacement): "Remove the old cartridge and put in the new one. Turn the water back on and check for leaks."
 
   Respond with exactly one digit: 1 if PASS, 0 if FAIL.

@@ -8,9 +8,14 @@ prompt_template: |
   Steps: {steps}
 
   A solution is OVERCOMPLICATED if:
-  - It has more than 10 steps for a simple repair
-  - It requires completely disassembling equipment when a simpler targeted fix would work
-  - The complexity is out of proportion to what an average homeowner with basic tools can handle
-  - It recommends a full replacement when a simple repair is appropriate
+  - It requires completely disassembling equipment when a targeted component fix would resolve the problem
+  - The number and complexity of steps is grossly out of proportion to the described problem
+  - It recommends replacing the entire appliance or system when a simple part swap would work
+  - It calls for specialized techniques (soldering, machining, major structural work) for a basic repair
+
+  A solution is APPROPRIATELY SCOPED if the steps match the actual complexity of the repair.
+
+  PASS example: Dripping faucet answer replaces just the washer — no need to remove the entire faucet assembly.
+  FAIL example: Dripping faucet answer instructs the homeowner to remove and replace the entire faucet unit, shut off the main water supply, and re-solder the supply lines.
 
   Respond with exactly one digit: 1 if OVERCOMPLICATED (failure), 0 if APPROPRIATELY SCOPED (pass).
