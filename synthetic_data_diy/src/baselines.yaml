@@ -5,24 +5,31 @@
 #           (zero_shot | few_shot | chain_of_thought | human_feedback | mock)
 # active:   when false the baseline is excluded from --all-active runs and
 #           from the compare subcommand; it still appears in stats (marked inactive)
+# run_correction:  when true the baseline is eligible for Phase 7 run_correctionion;
+#           default false — opt-in per baseline
 
 baselines:
-  - label: baseline-run
+  - label: baseline-mock
+    strategy: mock
+    active: true
+    run_correction: false
+
+  - label: baseline-zero_shot
     strategy: zero_shot
     active: true
+    run_correction: false
+
+  - label: baseline-few_shot
+    strategy: few_shot
+    active: true
+    run_correction: false
 
   - label: baseline-cot
     strategy: chain_of_thought
     active: true
-
-  - label: baseline-few-shot
-    strategy: few_shot
-    active: false  # Phase 5 corrupted — needs re-run after Groq quota reset
+    run_correction: false
 
   - label: baseline-rlhf
     strategy: human_feedback
-    active: false  # Phase 5 corrupted — needs re-run after Groq quota reset
-
-  - label: baseline-mock
-    strategy: mock
-    active: true
+    active: false
+    run_correction: false

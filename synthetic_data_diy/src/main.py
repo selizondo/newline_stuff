@@ -2,7 +2,7 @@
 Main CLI orchestrator for the Home DIY Repair Q&A Synthetic Data Pipeline.
 
 Usage:
-  python main.py                                       # Full pipeline, zero_shot, 50 samples
+  python main.py plan --phase 7                        # Preview Phase 7 correction plan (no API calls)
   python main.py --samples 20 --prompt-strategy few_shot --batch-label few-shot-run1
   python main.py --prompt-strategy chain_of_thought --batch-label cot-run1
   python main.py --phase 1 --samples 10              # Phase 1 only
@@ -128,9 +128,7 @@ def _phase_status(run_dir: Path) -> dict:
 def _fmt_check(ok: bool | None, corrupted: bool = False) -> str:
     if corrupted:
         return " ✗!"
-    if ok is None:
-        return "  — "
-    return "  ✓ " if ok else "  — "
+    return "  ✓  " if ok else "  —  "
 
 
 def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
@@ -162,20 +160,27 @@ def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
                 print(f"\n── {name}: not found ({path}) ──")
         return
 
-    batches = (
-        sorted([d for d in output_dir.iterdir() if d.is_dir() and not d.name.startswith("_")])
-        if output_dir.exists() else []
+    all_dirs = (
+        {d.name: d for d in output_dir.iterdir() if d.is_dir() and not d.name.startswith("_")}
+        if output_dir.exists() else {}
     )
-    if not batches:
+    if not all_dirs:
         print(f"No batch directories found under {output_dir}.")
         print("Run the pipeline first, or use --batch-label <name> to inspect a specific run.")
         return
 
-    from baselines import active_labels as _active_labels
+    from baselines import load_baselines as _load_baselines, active_labels as _active_labels
     try:
+        _baseline_order = [b.label for b in _load_baselines()]
         _active = _active_labels()
     except Exception:
+        _baseline_order = []
         _active = set()
+
+    # Baselines in yaml order first, then remaining dirs alphabetically
+    yaml_dirs = [all_dirs[lbl] for lbl in _baseline_order if lbl in all_dirs]
+    rest_dirs = sorted(d for name, d in all_dirs.items() if name not in set(_baseline_order))
+    batches = yaml_dirs + rest_dirs
 
     col_label = max(len(d.name) for d in batches) + 2  # +2 for ★ marker
     col_label = max(col_label, 22)
@@ -186,13 +191,13 @@ def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
 
     for d in batches:
         s = _phase_status(d)
-        fail_str = f"{s['failure_rate']*100:>5.1f}%" if s["failure_rate"] is not None else "    —  "
-        qual_str = f"{s['quality_rate']*100:>5.1f}%" if s["quality_rate"] is not None else "    —  "
-        ph5_mark = " ✗!" if s["ph5_corrupted"] else ("  ✓ " if s["ph5"] else "  — ")
+        fail_str = f"{s['failure_rate']*100:>6.2f}%" if s["failure_rate"] is not None else "      —"
+        qual_str = f"{s['quality_rate']*100:>6.2f}%" if s["quality_rate"] is not None else "      —"
+        ph5_mark = " ✗!" if s["ph5_corrupted"] else ("  ✓  " if s["ph5"] else "  —  ")
         marker = "★ " if d.name in _active else "  "
         label = f"{marker}{d.name}"
         row = (
-            f"{label:<{col_label}}"
+            f"{label:<{col_label}}\t"
             f"{_fmt_check(s['ph1'])}"
             f"{_fmt_check(s['ph2'])}"
             f"{_fmt_check(s['ph3'])}"
@@ -200,13 +205,146 @@ def quick_stats(output_dir: Path, batch_label: str | None = None) -> None:
             f"{ph5_mark}"
             f"{_fmt_check(s['ph6'])}"
             f"{_fmt_check(s['ph7'])}"
-            f"   {fail_str}   {qual_str}"
+            f" {fail_str}   {qual_str}"
         )
         print(row)
 
     print(f"\n  ★  = active baseline (baselines.yaml)")
     print(f"  ✓  = complete    —  = not run    ✗! = corrupted (>40% all-zero rows)")
     print(f"  Use 'python main.py stats --batch-label <name>' for full JSON reports.")
+
+
+# ---------------------------------------------------------------------------
+# Phase 7 plan subcommand
+# ---------------------------------------------------------------------------
+
+def _plan_phase7(base_output: Path, max_iterations: int) -> None:
+    """Scan active baselines, rank by worst failure/quality, preview correction plan."""
+    import pandas as pd
+    from baselines import load_baselines
+    from phase7_correction import _build_failure_context
+    from schema import FAILURE_MODE_FIELDS, QUALITY_DIMENSION_FIELDS
+
+    all_baselines = load_baselines()
+
+    # Score each baseline
+    entries: list[dict] = []
+    for b in all_baselines:
+        run_dir = base_output / b.label
+        failure_csv = run_dir / "failure_labeled_data.csv"
+        quality_csv = run_dir / "quality_eval_data.csv"
+
+        if not failure_csv.exists():
+            entries.append({"b": b, "failure_rate": None, "quality_rate": None,
+                            "ph5_clean": None, "failure_df": None})
+            continue
+
+        try:
+            fdf = pd.read_csv(failure_csv)
+            failure_rate = float(fdf["overall_failure"].mean())
+        except Exception:
+            entries.append({"b": b, "failure_rate": None, "quality_rate": None,
+                            "ph5_clean": None, "failure_df": None})
+            continue
+
+        quality_rate = None
+        ph5_clean = False
+        if quality_csv.exists():
+            try:
+                qdf = pd.read_csv(quality_csv)
+                dim_cols = [c for c in qdf.columns if c not in ("trace_id", "category", "overall_quality_pass")]
+                if dim_cols and (qdf[dim_cols] == 0).all(axis=1).mean() < 0.4:
+                    quality_rate = float(qdf["overall_quality_pass"].mean())
+                    ph5_clean = True
+            except Exception:
+                pass
+
+        entries.append({"b": b, "failure_rate": failure_rate, "quality_rate": quality_rate,
+                        "ph5_clean": ph5_clean, "failure_df": fdf})
+
+    # Rank active baselines with Phase 4 data
+    rankable = [e for e in entries if e["b"].active and e["failure_rate"] is not None]
+    rankable.sort(key=lambda e: (
+        -(e["failure_rate"] or 0.0),
+        e["quality_rate"] if e["quality_rate"] is not None else 1.0,
+    ))
+    rank_map: dict[str, int] = {e["b"].label: i + 1 for i, e in enumerate(rankable)}
+    selected = rankable[0] if rankable else None
+
+    # Print ranking table
+    col_w = max((len(e["b"].label) for e in entries), default=20) + 2
+    col_w = max(col_w, 20)
+    header = f"  {'#':>2}  {'Baseline':<{col_w}}  {'Failure':>8}  {'Quality':>8}  {'Ph5':>4}  Select"
+    print("\nPhase 7 Candidate Ranking (active baselines)")
+    print("─" * (len(header) + 2))
+    print(header)
+    print("─" * (len(header) + 2))
+
+    for e in entries:
+        b = e["b"]
+        rank_num = rank_map.get(b.label)
+        rank_str = f"{rank_num:>2}" if rank_num is not None else " —"
+        fail_str = f"{e['failure_rate']*100:>6.1f}%" if e["failure_rate"] is not None else "      —"
+        qual_str = f"{e['quality_rate']*100:>6.1f}%" if e["quality_rate"] is not None else "      —"
+        if e["ph5_clean"] is None:
+            ph5_str = "   —"
+        elif e["ph5_clean"]:
+            ph5_str = "  ✓ "
+        else:
+            ph5_str = " ✗! "
+        if not b.active:
+            note = "(inactive)"
+        elif e["failure_rate"] is None:
+            note = "(no data)"
+        elif rank_num == 1:
+            note = "← recommended"
+        else:
+            note = ""
+        print(f"  {rank_str}  {b.label:<{col_w}}  {fail_str}  {qual_str}  {ph5_str}  {note}")
+
+    print()
+
+    if not selected:
+        print("No active baselines have Phase 4 data. Run phases 4-5 first:")
+        print("  python main.py --phase 4-5 --all-active")
+        return
+
+    # Preview failure context
+    print(f"Selected baseline : {selected['b'].label}")
+    print(f"  Failure rate    : {selected['failure_rate']*100:.1f}%")
+    if selected["quality_rate"] is not None:
+        print(f"  Quality pass    : {selected['quality_rate']*100:.1f}%")
+    print()
+
+    failure_context = _build_failure_context(selected["failure_df"])
+    if failure_context:
+        print("Failure context that will be injected into generation prompts:")
+        print("─" * 60)
+        print(failure_context)
+        print("─" * 60)
+    else:
+        print("No failures detected — failure context will be empty.")
+    print()
+
+    # Estimate API calls
+    valid_json = base_output / selected["b"].label / "structurally_valid_qa_pairs.json"
+    if valid_json.exists():
+        try:
+            n_valid = len(json.loads(valid_json.read_text()))
+        except Exception:
+            n_valid = len(selected["failure_df"])
+    else:
+        n_valid = len(selected["failure_df"])
+
+    n_judges = len(FAILURE_MODE_FIELDS) + len(QUALITY_DIMENSION_FIELDS)  # 6 + 9 = 15
+    per_iter = n_valid * n_judges
+    total = per_iter * max_iterations
+    print(f"Estimated judge calls: {n_valid} × {n_judges} × {max_iterations} iterations = {total} total")
+    print()
+
+    # Print next command
+    print("Run Phase 7 with:")
+    print(f"  python main.py --phase 7 --batch-label {selected['b'].label} --max-iterations {max_iterations}")
 
 
 # ---------------------------------------------------------------------------
@@ -227,6 +365,8 @@ def _run_phases(
     num_samples: int,
     base_output: Path,
     max_iterations: int,
+    overwrite: bool = False,
+    samples_per_category: int | None = None,
 ) -> dict[str, float]:
     """Run the requested phase range for a single batch. Returns phase timings."""
     output_dir = base_output / batch_label
@@ -243,15 +383,23 @@ def _run_phases(
     # ── Phase 1: Generation ───────────────────────────────────────────────
     if phase_start <= 1 <= phase_end:
         t0 = _section("PHASE 1 — Generation")
-        from phase1_generation import run_generation_phase
-        generation_results = run_generation_phase(
-            num_samples=num_samples,
-            generation_model=_gen_model,
-            output_dir=output_dir,
-            strategy=strategy,
-            batch_label=batch_label,
-            output_base=base_output,
-        )
+        import logfire
+        with logfire.span(
+            "phase.generation batch={batch_label}",
+            batch_label=batch_label, phase=1,
+            strategy=strategy, num_samples=num_samples, model=_gen_model,
+        ):
+            from phase1_generation import run_generation_phase
+            generation_results = run_generation_phase(
+                num_samples=num_samples,
+                generation_model=_gen_model,
+                output_dir=output_dir,
+                strategy=strategy,
+                batch_label=batch_label,
+                output_base=base_output,
+                overwrite=overwrite,
+                samples_per_category=samples_per_category,
+            )
         parsed = sum(1 for r in generation_results if r.parse_error is None)
         phase_timings["1 Generation"] = time.monotonic() - t0
         _phase_done(t0, f"{parsed}/{len(generation_results)} parsed ({parsed/len(generation_results)*100:.0f}%)")
@@ -271,35 +419,52 @@ def _run_phases(
     # ── Phase 3: Benchmark Calibration ───────────────────────────────────
     if phase_start <= 3 <= phase_end:
         t0 = _section("PHASE 3 — Benchmark Calibration (judge verification)")
-        from phase3_benchmark import run_benchmark_phase
-        bench = run_benchmark_phase(
-            judge_model=judge_model,
-            output_dir=output_dir,
-            num_samples=50,
-            base_output=base_output,
-        )
+        import logfire
+        with logfire.span(
+            "phase.benchmark batch={batch_label}",
+            batch_label=batch_label, phase=3, judge_model=judge_model,
+        ):
+            from phase3_benchmark import run_benchmark_phase
+            bench = run_benchmark_phase(
+                judge_model=judge_model,
+                output_dir=output_dir,
+                num_samples=50,
+                base_output=base_output,
+            )
         phase_timings["3 Benchmark"] = time.monotonic() - t0
         _phase_done(t0, f"pass rate {bench.benchmark_quality_pass_rate*100:.1f}% ({'cached' if time.monotonic()-t0 < 5 else 'calibration passed' if bench.calibration_passed else 'WARNING: calibration failed'})")
 
     # ── Phase 4: Failure Labeling ─────────────────────────────────────────
     if phase_start <= 4 <= phase_end:
         t0 = _section("PHASE 4 — Failure Labeling (LLM-as-Judge, 6 modes)")
+        import logfire
         from phase2_validation import load_valid_data
         from phase4_failure_labeling import run_failure_labeling_phase
         if valid_results is None:
             valid_results = load_valid_data(output_dir)
-        df4 = run_failure_labeling_phase(valid_results, judge_model, output_dir)
+        with logfire.span(
+            "phase.failure_labeling batch={batch_label}",
+            batch_label=batch_label, phase=4, judge_model=judge_model,
+            num_samples=len(valid_results),
+        ):
+            df4 = run_failure_labeling_phase(valid_results, judge_model, output_dir)
         phase_timings["4 Failure Label"] = time.monotonic() - t0
         _phase_done(t0, f"overall failure rate {df4['overall_failure'].mean()*100:.1f}%")
 
     # ── Phase 5: Quality Evaluation ───────────────────────────────────────
     if phase_start <= 5 <= phase_end:
         t0 = _section("PHASE 5 — Quality Evaluation (LLM-as-Judge, 9 dimensions)")
+        import logfire
         from phase2_validation import load_valid_data
         from phase5_quality_eval import run_quality_eval_phase
         if valid_results is None:
             valid_results = load_valid_data(output_dir)
-        df5 = run_quality_eval_phase(valid_results, judge_model, output_dir)
+        with logfire.span(
+            "phase.quality_eval batch={batch_label}",
+            batch_label=batch_label, phase=5, judge_model=judge_model,
+            num_samples=len(valid_results),
+        ):
+            df5 = run_quality_eval_phase(valid_results, judge_model, output_dir)
         phase_timings["5 Quality Eval"] = time.monotonic() - t0
         _phase_done(t0, f"overall quality pass rate {df5['overall_quality_pass'].mean()*100:.1f}%")
 
@@ -356,11 +521,18 @@ def _print_phase_timings(phase_timings: dict[str, float], output_dir: Path) -> N
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    from dotenv import load_dotenv
+    load_dotenv()
+
     parser = argparse.ArgumentParser(
         description="Home DIY Repair Q&A Synthetic Data Pipeline — all 7 phases"
     )
-    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats', 'compare', 'agreement', 'mock'")
-    parser.add_argument("--samples", type=int, default=50, help="Q&A pairs to generate (default: 50)")
+    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats', 'compare', 'agreement', 'mock', 'plan'")
+    parser.add_argument("--samples", type=int, default=50, help="Total Q&A pairs to generate (default: 50)")
+    parser.add_argument("--samples-per-category", type=int, default=None, dest="samples_per_category",
+                        help="Q&A pairs per category (overrides --samples; total = N × num_categories)")
+    parser.add_argument("--overwrite", action="store_true",
+                        help="Overwrite existing generation_results.json instead of appending (default: append)")
     parser.add_argument("--generation-model", type=str, default=None, dest="generation_model",
                         help="Generation model override (default: LLM_MODEL from .env)")
     parser.add_argument("--judge-model", type=str, default=None, dest="judge_model",
@@ -375,6 +547,8 @@ def main() -> None:
                              "Defaults to '<strategy>-<timestamp>'. Ignored when --all-active is set.")
     parser.add_argument("--all-active", action="store_true", dest="all_active",
                         help="Run the requested phases for every active baseline in baselines.yaml sequentially.")
+    parser.add_argument("--next", action="store_true",
+                        help="Run the requested phases for the first incomplete baseline in baselines.yaml order.")
     parser.add_argument("--max-iterations", type=int, default=3, dest="max_iterations",
                         help="Maximum correction iterations in Phase 7 (default: 3)")
     parser.add_argument("--output-dir", type=str, default="output", help="Base output directory (default: output)")
@@ -386,6 +560,13 @@ def main() -> None:
                         help="Skip generating mock human_labels.json (mock subcommand)")
 
     args = parser.parse_args()
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        return
+
+    from observability import configure_observability
+    configure_observability(send_to_logfire=False)
 
     base_output = Path(args.output_dir)
 
@@ -434,6 +615,14 @@ def main() -> None:
                 print(f"  {f.relative_to(out_dir)}")
         return
 
+    if args.command == "plan":
+        if args.phase != "1-7" and _parse_phase_range(args.phase) == (7, 7):
+            _plan_phase7(base_output, args.max_iterations)
+        else:
+            print("'plan' currently supports --phase 7 only.")
+            print("  python main.py plan --phase 7")
+        return
+
     # Resolve models from CLI or config
     from config import get_settings
     settings = get_settings()
@@ -473,6 +662,8 @@ def main() -> None:
                 num_samples=args.samples,
                 base_output=base_output,
                 max_iterations=args.max_iterations,
+                overwrite=args.overwrite,
+                samples_per_category=args.samples_per_category,
             )
             for k, v in timings.items():
                 all_timings[f"{baseline.label}/{k}"] = v
@@ -481,6 +672,53 @@ def main() -> None:
         total = sum(all_timings.values())
         total_mins, total_secs = divmod(int(total), 60)
         print(f"Total wall time: {total_mins}m {total_secs:02d}s across {len(baselines)} baselines")
+        return
+
+    # ── --next: first incomplete baseline in yaml order ───────────────────
+    if args.next:
+        from baselines import active_baselines
+        phase_checks = {
+            1: "ph1", 2: "ph2", 3: "ph3", 4: "ph4", 6: "ph6", 7: "ph7",
+        }
+        selected = None
+        for b in active_baselines():
+            s = _phase_status(base_output / b.label)
+            incomplete = False
+            for p in range(phase_start, phase_end + 1):
+                if p == 3 and b.strategy == "mock":
+                    continue  # mock baselines legitimately skip benchmark calibration
+                if p == 5:
+                    if not s["ph5"] or s["ph5_corrupted"]:
+                        incomplete = True
+                        break
+                elif not s.get(phase_checks.get(p, ""), False):
+                    incomplete = True
+                    break
+            if incomplete:
+                selected = b
+                break
+
+        if selected is None:
+            print(f"All active baselines are complete for phases {phase_start}–{phase_end}.")
+            return
+
+        print(f"Next baseline: {selected.label}  (strategy: {selected.strategy})")
+        strategy = selected.strategy
+        batch_label = selected.label
+        phase_timings = _run_phases(
+            phase_start=phase_start,
+            phase_end=phase_end,
+            batch_label=batch_label,
+            strategy=strategy,
+            generation_model=generation_model,
+            judge_model=judge_model,
+            num_samples=args.samples,
+            base_output=base_output,
+            max_iterations=args.max_iterations,
+            overwrite=args.overwrite,
+            samples_per_category=args.samples_per_category,
+        )
+        _print_phase_timings(phase_timings, base_output / batch_label)
         return
 
     # ── Single baseline run ───────────────────────────────────────────────
@@ -508,9 +746,15 @@ def main() -> None:
         num_samples=args.samples,
         base_output=base_output,
         max_iterations=args.max_iterations,
+        overwrite=args.overwrite,
+        samples_per_category=args.samples_per_category,
     )
     _print_phase_timings(phase_timings, base_output / batch_label)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        from observability import flush_langfuse
+        flush_langfuse()
