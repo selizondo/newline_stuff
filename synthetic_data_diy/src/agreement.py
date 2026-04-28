@@ -94,10 +94,12 @@ def run_agreement(batch_label: str, output_dir: Path, threshold: float = AGREEME
         n_agree = sum(1 for hv, lv in pairs if hv == lv)
         rate = n_agree / n_total
 
-        tp = sum(1 for hv, lv in pairs if hv == 1 and lv == 1)
-        tn = sum(1 for hv, lv in pairs if hv == 0 and lv == 0)
-        fp = sum(1 for hv, lv in pairs if hv == 0 and lv == 1)
-        fn = sum(1 for hv, lv in pairs if hv == 1 and lv == 0)
+        tp = tn = fp = fn = 0
+        for hv, lv in pairs:
+            if hv == 1 and lv == 1:   tp += 1
+            elif hv == 0 and lv == 0: tn += 1
+            elif hv == 0 and lv == 1: fp += 1
+            else:                     fn += 1
 
         dim_results[human_key] = {
             "human_key": human_key,

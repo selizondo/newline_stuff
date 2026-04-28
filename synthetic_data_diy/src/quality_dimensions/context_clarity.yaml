@@ -1,0 +1,23 @@
+name: context_clarity
+label: "D5: Context Clarity"
+threshold: 0.90
+prompt_template: |
+  Evaluate D5 — Context Clarity.
+
+  Question: {question}
+  Equipment Problem: {equipment_problem}
+  Answer: {answer}
+
+  The answer PASSES if:
+  - The question contains enough context to understand what the specific problem is
+  - The answer directly addresses the specific equipment_problem stated — not a related but different problem
+  - The answer does not omit or ignore the core repair described in the question
+  - A reader could understand the problem and the repair without needing additional context
+
+  The answer FAILS if:
+  - The question is so vague that the specific problem cannot be determined
+  - The answer addresses a different (related but distinct) problem
+  - The answer is generic advice that does not address the stated equipment_problem
+  - Critical context needed to understand the repair is missing
+
+  Respond with exactly one digit: 1 if PASS, 0 if FAIL.

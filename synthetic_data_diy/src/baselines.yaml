@@ -32,4 +32,4 @@ baselines:
   - label: baseline-rlhf
     strategy: human_feedback
     active: false
-    run_correction: false
+    run_correction: true

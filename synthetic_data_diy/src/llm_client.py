@@ -179,7 +179,13 @@ _JUDGE_BATCH_SYSTEM_PROMPT = (
 )
 
 
-def judge_binary(prompt: str, model: str, default_on_error: int = 0, obs_context: dict | None = None) -> int:
+def judge_binary(
+    prompt: str,
+    model: str,
+    default_on_error: int = 0,
+    obs_context: dict | None = None,
+    name: str = "judge_binary",
+) -> int:
     """Call the judge endpoint and return 0 or 1.
 
     default_on_error controls which side to fail safe:
@@ -197,7 +203,7 @@ def judge_binary(prompt: str, model: str, default_on_error: int = 0, obs_context
         result = int(digit) if digit in ("0", "1") else default_on_error
         record_llm_generation(
             obs_context=obs_context,
-            name="phase3.judge_binary",
+            name=name,
             model=model,
             input_messages=messages,
             output=str(result),
@@ -207,7 +213,7 @@ def judge_binary(prompt: str, model: str, default_on_error: int = 0, obs_context
     except Exception as e:
         record_llm_generation(
             obs_context=obs_context,
-            name="phase3.judge_binary",
+            name=name,
             model=model,
             input_messages=messages,
             output=None,

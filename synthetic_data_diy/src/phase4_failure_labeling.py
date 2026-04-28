@@ -96,7 +96,6 @@ class FailureLabeler:
             "batch_label": self.batch_label,
             "phase": 4,
             "category": result.category,
-            "prompt_strategy": "",
         }
         try:
             batch = judge_batch(self._build_batch_prompt(qa), self._batch_model, self.model, obs_context=obs_context)

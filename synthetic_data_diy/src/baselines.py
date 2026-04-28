@@ -37,7 +37,7 @@ def active_baselines() -> list[Baseline]:
 
 
 def run_correctionable_baselines() -> list[Baseline]:
-    """Return active baselines eligible for Phase 7 run_correctionion (run_correction=true)."""
+    """Return active baselines eligible for Phase 7 correction (run_correction=true)."""
     return [b for b in load_baselines() if b.active and b.run_correction]
 
 

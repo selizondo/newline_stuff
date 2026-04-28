@@ -139,46 +139,41 @@ class FailureLabelResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Phase 5: Quality evaluation result (9 dimensions)
+# Phase 5: Quality evaluation result (6 dimensions — D1–D6 per spec)
 # ---------------------------------------------------------------------------
 
-# Human labeler uses 6 of the 9 quality dimensions, with 2 name differences.
-# This mapping is the single source of truth used by agreement.py and mock_seeder.py.
+# Human labeler field name → LLM judge field name.
+# Single source of truth for agreement.py and mock_seeder.py.
+# D4 has different names: human uses scope_appropriateness, LLM uses appropriate_scope.
 HUMAN_TO_LLM: dict[str, str] = {
-    "answer_completeness": "answer_completeness",
-    "safety_specificity": "safety_specificity",
-    "tool_realism": "tool_realism",
-    "scope_appropriateness": "appropriate_scope",
-    "context_clarity": "problem_answer_alignment",
-    "tip_usefulness": "tip_usefulness",
+    "answer_completeness": "answer_completeness",    # D1
+    "safety_specificity": "safety_specificity",      # D2
+    "tool_realism": "tool_realism",                  # D3
+    "scope_appropriateness": "appropriate_scope",    # D4
+    "context_clarity": "context_clarity",            # D5
+    "tip_usefulness": "tip_usefulness",              # D6
 }
 
 QUALITY_DIMENSION_FIELDS: list[str] = [
-    "answer_coherence",
-    "answer_completeness",
-    "appropriate_scope",
-    "category_accuracy",
-    "problem_answer_alignment",
-    "safety_specificity",
-    "step_actionability",
-    "tip_usefulness",
-    "tool_realism",
+    "answer_completeness",    # D1
+    "safety_specificity",     # D2
+    "tool_realism",           # D3
+    "appropriate_scope",      # D4
+    "context_clarity",        # D5
+    "tip_usefulness",         # D6
 ]
 
 
 class QualityEvalResult(BaseModel):
     trace_id: str
     category: str
-    answer_coherence: int = Field(..., ge=0, le=1)          # Q1
-    answer_completeness: int = Field(..., ge=0, le=1)        # Q9
-    appropriate_scope: int = Field(..., ge=0, le=1)          # Q7
-    category_accuracy: int = Field(..., ge=0, le=1)          # Q8
-    problem_answer_alignment: int = Field(..., ge=0, le=1)   # Q6
-    safety_specificity: int = Field(..., ge=0, le=1)         # Q4
-    step_actionability: int = Field(..., ge=0, le=1)         # Q2
-    tip_usefulness: int = Field(..., ge=0, le=1)             # Q5
-    tool_realism: int = Field(..., ge=0, le=1)               # Q3
-    overall_quality_pass: int  # 1 if ALL dimensions pass
+    answer_completeness: int = Field(..., ge=0, le=1)   # D1
+    safety_specificity: int = Field(..., ge=0, le=1)    # D2
+    tool_realism: int = Field(..., ge=0, le=1)          # D3
+    appropriate_scope: int = Field(..., ge=0, le=1)     # D4
+    context_clarity: int = Field(..., ge=0, le=1)       # D5
+    tip_usefulness: int = Field(..., ge=0, le=1)        # D6
+    overall_quality_pass: int  # 1 if ALL 6 dimensions pass
 
 
 # ---------------------------------------------------------------------------

@@ -367,6 +367,7 @@ def _run_phases(
     max_iterations: int,
     overwrite: bool = False,
     samples_per_category: int | None = None,
+    run_correction: bool = True,
 ) -> dict[str, float]:
     """Run the requested phase range for a single batch. Returns phase timings."""
     output_dir = base_output / batch_label
@@ -477,7 +478,9 @@ def _run_phases(
         _phase_done(t0)
 
     # ── Phase 7: Prompt Correction ────────────────────────────────────────
-    if phase_start <= 7 <= phase_end:
+    if phase_start <= 7 <= phase_end and not run_correction:
+        print("  Phase 7 skipped — run_correction=false for this baseline.")
+    if phase_start <= 7 <= phase_end and run_correction:
         t0 = _section("PHASE 7 — Prompt Correction & Re-evaluation")
         from phase7_correction import run_correction_phase
         run_correction_phase(
@@ -664,6 +667,7 @@ def main() -> None:
                 max_iterations=args.max_iterations,
                 overwrite=args.overwrite,
                 samples_per_category=args.samples_per_category,
+                run_correction=baseline.run_correction,
             )
             for k, v in timings.items():
                 all_timings[f"{baseline.label}/{k}"] = v
