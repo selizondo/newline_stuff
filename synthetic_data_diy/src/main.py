@@ -368,6 +368,7 @@ def _run_phases(
     overwrite: bool = False,
     samples_per_category: int | None = None,
     run_correction: bool = True,
+    shared_questions: bool = False,
 ) -> dict[str, float]:
     """Run the requested phase range for a single batch. Returns phase timings."""
     output_dir = base_output / batch_label
@@ -383,24 +384,43 @@ def _run_phases(
 
     # ── Phase 1: Generation ───────────────────────────────────────────────
     if phase_start <= 1 <= phase_end:
-        t0 = _section("PHASE 1 — Generation")
         import logfire
-        with logfire.span(
-            "phase.generation batch={batch_label}",
-            batch_label=batch_label, phase=1,
-            strategy=strategy, num_samples=num_samples, model=_gen_model,
-        ):
-            from phase1_generation import run_generation_phase
-            generation_results = run_generation_phase(
-                num_samples=num_samples,
-                generation_model=_gen_model,
-                output_dir=output_dir,
-                strategy=strategy,
-                batch_label=batch_label,
-                output_base=base_output,
-                overwrite=overwrite,
-                samples_per_category=samples_per_category,
-            )
+        if shared_questions:
+            t0 = _section("PHASE 1b — Answer Generation (shared question set)")
+            from phase1_generation import load_shared_questions, run_answer_generation_phase
+            shared_qs = load_shared_questions(base_output)
+            print(f"Loaded {len(shared_qs)} shared questions from {base_output / '_shared'}")
+            with logfire.span(
+                "phase.answer_generation batch={batch_label}",
+                batch_label=batch_label, phase="1b",
+                strategy=strategy, num_samples=len(shared_qs), model=_gen_model,
+            ):
+                generation_results = run_answer_generation_phase(
+                    shared_questions=shared_qs,
+                    generation_model=_gen_model,
+                    output_dir=output_dir,
+                    strategy=strategy,
+                    batch_label=batch_label,
+                    overwrite=overwrite,
+                )
+        else:
+            t0 = _section("PHASE 1 — Generation")
+            with logfire.span(
+                "phase.generation batch={batch_label}",
+                batch_label=batch_label, phase=1,
+                strategy=strategy, num_samples=num_samples, model=_gen_model,
+            ):
+                from phase1_generation import run_generation_phase
+                generation_results = run_generation_phase(
+                    num_samples=num_samples,
+                    generation_model=_gen_model,
+                    output_dir=output_dir,
+                    strategy=strategy,
+                    batch_label=batch_label,
+                    output_base=base_output,
+                    overwrite=overwrite,
+                    samples_per_category=samples_per_category,
+                )
         parsed = sum(1 for r in generation_results if r.parse_error is None)
         phase_timings["1 Generation"] = time.monotonic() - t0
         _phase_done(t0, f"{parsed}/{len(generation_results)} parsed ({parsed/len(generation_results)*100:.0f}%)")
@@ -530,7 +550,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Home DIY Repair Q&A Synthetic Data Pipeline — all 7 phases"
     )
-    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats', 'compare', 'agreement', 'mock', 'plan'")
+    parser.add_argument("command", nargs="?", default=None, help="Optional subcommand: 'stats', 'compare', 'agreement', 'mock', 'plan', 'questions'")
     parser.add_argument("--samples", type=int, default=50, help="Total Q&A pairs to generate (default: 50)")
     parser.add_argument("--samples-per-category", type=int, default=None, dest="samples_per_category",
                         help="Q&A pairs per category (overrides --samples; total = N × num_categories)")
@@ -561,6 +581,9 @@ def main() -> None:
                         help="Random seed for Bernoulli draws (mock subcommand, default: 42)")
     parser.add_argument("--skip-human-labels", action="store_true", dest="skip_human_labels",
                         help="Skip generating mock human_labels.json (mock subcommand)")
+    parser.add_argument("--shared-questions", action="store_true", dest="shared_questions",
+                        help="Ph1b mode: generate answers for the shared question set in output/_shared/questions.json "
+                             "instead of generating new questions. Run 'python main.py questions' first.")
 
     args = parser.parse_args()
 
@@ -618,6 +641,28 @@ def main() -> None:
                 print(f"  {f.relative_to(out_dir)}")
         return
 
+    if args.command == "questions":
+        from config import get_settings
+        settings = get_settings()
+        gen_model = args.generation_model or settings.generation_model
+        n = args.samples_per_category or (args.samples // 5)
+        _banner("HOME DIY REPAIR Q&A — QUESTION GENERATION (Ph1a)")
+        print(f"Generation model   : {gen_model}")
+        print(f"Questions/category : {n}  (5 categories → {n*5} total)")
+        print(f"Output             : {(base_output / '_shared' / 'questions.json').absolute()}")
+        from phase1_generation import run_question_generation_phase
+        questions = run_question_generation_phase(
+            num_per_category=n,
+            generation_model=gen_model,
+            output_base=base_output,
+            seed=args.seed,
+            overwrite=args.overwrite,
+        )
+        print(f"\nShared question set ready ({len(questions)} questions).")
+        print("Next: generate answers per baseline with --shared-questions:")
+        print(f"  python main.py --phase 1-6 --all-active --shared-questions")
+        return
+
     if args.command == "plan":
         if args.phase != "1-7" and _parse_phase_range(args.phase) == (7, 7):
             _plan_phase7(base_output, args.max_iterations)
@@ -668,6 +713,7 @@ def main() -> None:
                 overwrite=args.overwrite,
                 samples_per_category=args.samples_per_category,
                 run_correction=baseline.run_correction,
+                shared_questions=args.shared_questions,
             )
             for k, v in timings.items():
                 all_timings[f"{baseline.label}/{k}"] = v
@@ -721,6 +767,7 @@ def main() -> None:
             max_iterations=args.max_iterations,
             overwrite=args.overwrite,
             samples_per_category=args.samples_per_category,
+            shared_questions=args.shared_questions,
         )
         _print_phase_timings(phase_timings, base_output / batch_label)
         return
@@ -752,6 +799,7 @@ def main() -> None:
         max_iterations=args.max_iterations,
         overwrite=args.overwrite,
         samples_per_category=args.samples_per_category,
+        shared_questions=args.shared_questions,
     )
     _print_phase_timings(phase_timings, base_output / batch_label)
 

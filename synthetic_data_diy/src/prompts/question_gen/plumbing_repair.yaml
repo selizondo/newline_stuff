@@ -1,0 +1,16 @@
+category: plumbing_repair
+system: >-
+  You are a licensed plumber who specializes in helping homeowners fix common
+  plumbing issues.
+user: |
+  Generate ONE specific DIY repair question that a homeowner might ask about a common plumbing problem.
+
+  Return ONLY a valid JSON object:
+  {
+    "question": "<specific repair question, 10-500 chars>",
+    "equipment_problem": "<concise symptom description, e.g. 'Kitchen faucet drips when off', 5-200 chars>"
+  }
+
+  Rules:
+  - The question must be about a specific, fixable plumbing problem (not re-piping or drain installation)
+  - Do NOT wrap JSON in markdown code fences

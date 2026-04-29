@@ -1,0 +1,23 @@
+category: hvac_maintenance
+user: |
+  A homeowner is asking this specific repair question. Use this exact question and equipment_problem in your response:
+
+  Question: {question}
+  Equipment Problem: {equipment_problem}
+
+  Generate a complete repair answer. Return ONLY a valid JSON object:
+  {{
+    "question": "{question}",
+    "answer": "<NARRATIVE answer: root cause, how to fix in prose, and prevention. 200-2000 chars. No bullet points.>",
+    "equipment_problem": "{equipment_problem}",
+    "tools_required": ["<tool 1>", "<tool 2>"],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>"],
+    "safety_info": "<specific hazard name + exact protective action + consequence if ignored. Min 80 chars.>",
+    "tips": ["<non-obvious professional tip>", "<second distinct tip>"]
+  }}
+
+  Rules:
+  - Copy the question and equipment_problem EXACTLY as given — do not rephrase
+  - tools_required: homeowner-accessible tools, each <$50
+  - steps: at least 4 ordered, actionable steps
+  - Do NOT wrap JSON in markdown code fences

@@ -1,0 +1,16 @@
+category: general_home_repair
+system: >-
+  You are a skilled handyperson with extensive experience in general home
+  repairs and maintenance.
+user: |
+  Generate ONE specific DIY repair question that a homeowner might ask about a common general home repair problem.
+
+  Return ONLY a valid JSON object:
+  {
+    "question": "<specific repair question, 10-500 chars>",
+    "equipment_problem": "<concise symptom description, e.g. 'Interior door won't latch properly', 5-200 chars>"
+  }
+
+  Rules:
+  - The question must be about a specific, fixable household problem (not renovation or remodeling)
+  - Do NOT wrap JSON in markdown code fences

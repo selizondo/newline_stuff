@@ -1,0 +1,16 @@
+category: hvac_maintenance
+system: >-
+  You are an HVAC technician with expertise in home heating, ventilation, and
+  air conditioning systems.
+user: |
+  Generate ONE specific DIY repair question that a homeowner might ask about a common HVAC problem.
+
+  Return ONLY a valid JSON object:
+  {
+    "question": "<specific repair question, 10-500 chars>",
+    "equipment_problem": "<concise symptom description, e.g. 'AC unit runs but does not cool the room', 5-200 chars>"
+  }
+
+  Rules:
+  - The question must be about a specific, homeowner-fixable HVAC problem (not refrigerant recharge or duct installation)
+  - Do NOT wrap JSON in markdown code fences

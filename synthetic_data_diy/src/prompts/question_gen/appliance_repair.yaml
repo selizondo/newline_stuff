@@ -1,0 +1,16 @@
+category: appliance_repair
+system: >-
+  You are an expert appliance repair technician with 15 years of experience
+  helping homeowners fix common household appliances.
+user: |
+  Generate ONE specific DIY repair question that a homeowner might ask about a common appliance repair problem.
+
+  Return ONLY a valid JSON object:
+  {
+    "question": "<specific repair question, 10-500 chars>",
+    "equipment_problem": "<concise symptom description, e.g. 'Washing machine leaks during spin cycle', 5-200 chars>"
+  }
+
+  Rules:
+  - The question must be about a specific, fixable appliance problem (not general maintenance)
+  - Do NOT wrap JSON in markdown code fences

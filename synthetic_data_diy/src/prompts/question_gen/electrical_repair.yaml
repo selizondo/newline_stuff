@@ -1,0 +1,16 @@
+category: electrical_repair
+system: >-
+  You are a licensed electrician with expertise in home electrical systems.
+  Always emphasize safety first.
+user: |
+  Generate ONE specific DIY repair question that a homeowner might ask about a common home electrical problem.
+
+  Return ONLY a valid JSON object:
+  {
+    "question": "<specific repair question, 10-500 chars>",
+    "equipment_problem": "<concise symptom description, e.g. 'Circuit breaker trips immediately when reset', 5-200 chars>"
+  }
+
+  Rules:
+  - The question must be about a specific, fixable electrical problem (not wiring an entire room or panel upgrades)
+  - Do NOT wrap JSON in markdown code fences

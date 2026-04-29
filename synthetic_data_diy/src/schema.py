@@ -188,6 +188,17 @@ class BenchmarkReport(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Phase 1a: Shared question set (fixed inputs for controlled baseline comparison)
+# ---------------------------------------------------------------------------
+
+class SharedQuestion(BaseModel):
+    trace_id: str
+    category: str
+    question: str = Field(..., min_length=10, max_length=500)
+    equipment_problem: str = Field(..., min_length=5, max_length=200)
+
+
+# ---------------------------------------------------------------------------
 # Phase 6: Analysis summary
 # ---------------------------------------------------------------------------
 

@@ -26,6 +26,63 @@ import yaml
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 
+def load_answer_templates(strategy: str = "zero_shot") -> list[dict]:
+    """Load answer-only templates for Ph1b (controlled comparison mode).
+
+    System prompt comes from the strategy directory (preserving strategy flavor).
+    User prompt comes from answer_only/ and contains {question}/{equipment_problem}
+    placeholders that are formatted at generation time.
+
+    Args:
+        strategy: Answering strategy (zero_shot, few_shot, chain_of_thought, etc.)
+
+    Returns:
+        List of dicts with keys: category, system, user.
+        The user string contains {question} and {equipment_problem} format placeholders.
+    """
+    strategy_dir = PROMPTS_DIR / strategy
+    if not strategy_dir.is_dir():
+        available = sorted(d.name for d in PROMPTS_DIR.iterdir() if d.is_dir())
+        raise ValueError(
+            f"Unknown strategy '{strategy}'. "
+            f"Available strategies (subdirs of prompts/): {available}"
+        )
+
+    answer_only_dir = PROMPTS_DIR / "answer_only"
+    if not answer_only_dir.is_dir():
+        raise FileNotFoundError(f"answer_only prompt directory not found: {answer_only_dir}")
+
+    strategy_files = {f.stem: f for f in sorted(strategy_dir.glob("*.yaml"))}
+    answer_files = {f.stem: f for f in sorted(answer_only_dir.glob("*.yaml"))}
+
+    if not answer_files:
+        raise FileNotFoundError(f"No .yaml files found in {answer_only_dir}")
+
+    templates: list[dict] = []
+    for stem, answer_path in sorted(answer_files.items()):
+        with answer_path.open() as f:
+            answer_data = yaml.safe_load(f)
+
+        system = ""
+        if stem in strategy_files:
+            with strategy_files[stem].open() as f:
+                strategy_data = yaml.safe_load(f)
+            system = strategy_data.get("system", "")
+
+        if "user" not in answer_data:
+            raise ValueError(f"answer_only/{answer_path.name} is missing 'user' key")
+        if "category" not in answer_data:
+            raise ValueError(f"answer_only/{answer_path.name} is missing 'category' key")
+
+        templates.append({
+            "category": answer_data["category"],
+            "system": system,
+            "user": answer_data["user"],
+        })
+
+    return templates
+
+
 def load_prompt_templates(strategy: str = "zero_shot") -> list[dict]:
     """Load all prompt templates for the given strategy.
 
