@@ -15,11 +15,11 @@ Usage:
   python main.py mock --batch-label baseline-mock --num-samples 50 --seed 42
 
 Pipeline phases (in order):
-  1  Generation             — LLM generates Q&A pairs
+  1  Generation             — LLM generates Q&A pairs (or Ph1b answers for shared questions)
   2  Structural Validation  — Pydantic schema gate
   3  Benchmark Calibration  — judge verified against real-world dataset BEFORE use
   4  Failure Labeling       — LLM-as-Judge: 6 binary failure modes
-  5  Quality Evaluation     — LLM-as-Judge: 9 quality dimensions
+  5  Quality Evaluation     — LLM-as-Judge: 6 quality dimensions (D1–D6, one call per dim)
   6  Analysis               — visualizations + apples-to-apples benchmark gap
   7  Prompt Correction      — data-driven re-run with iterative improvement loop
 

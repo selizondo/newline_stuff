@@ -48,6 +48,24 @@ python main.py mock --batch-label baseline-mock --num-samples 50 --seed 42
 python main.py mock --skip-human-labels
 ```
 
+### Controlled baseline comparison (Ph1a / Ph1b)
+
+By default each baseline generates its own random questions, which conflates question
+difficulty with strategy quality. For a fair apples-to-apples comparison, generate a
+single shared question set first (Ph1a), then have every baseline answer those same
+questions (Ph1b):
+
+```bash
+# Ph1a — generate shared questions once (5 per category = 25 total)
+python main.py questions --samples-per-category 5
+
+# Ph1b — all baselines answer the same questions, then evaluate
+python main.py --phase 1-6 --all-active --shared-questions
+```
+
+Shared questions are saved to `output/_shared/questions.json`. All baselines receive
+the same `trace_id`s so results can be joined row-by-row for per-question comparison.
+
 ## Configuration
 
 Settings are loaded from environment variables (or a `.env` file):
@@ -79,6 +97,13 @@ Phase 1 generation supports four strategies, selected via `--prompt-strategy`:
 Templates live in `prompts/<strategy>/` — one YAML per repair category. Add a new
 strategy by creating a subdirectory with 5 category YAMLs; no code changes needed.
 
+Two additional strategy directories support the controlled comparison workflow:
+
+| Directory | Used by | Description |
+|---|---|---|
+| `prompts/question_gen/` | `python main.py questions` (Ph1a) | Generates only question + equipment_problem; no answer fields |
+| `prompts/answer_only/` | `--shared-questions` flag (Ph1b) | Answer-generation user template; system prompt is loaded from the chosen strategy |
+
 ## Output
 
 Each run writes to its own isolated subdirectory: `output/<batch-label>/`. Re-running
@@ -90,11 +115,27 @@ with the same label overwrites that run; use a different label to keep runs side
 
 ### Phase 1 — Generation
 
-**What it does:** Calls the LLM using Instructor to generate structured `QAPair` objects
-for each of the five repair categories (`appliance_repair`, `plumbing_repair`,
-`electrical_repair`, `hvac_maintenance`, `general_home_repair`). Samples are distributed
-across categories using stratified sampling so every category is represented even at
-small batch sizes.
+Phase 1 has two operating modes:
+
+**Default mode (Ph1 — full Q&A generation):** The LLM generates complete `QAPair` objects
+(question + all answer fields) for each of the five repair categories using the selected
+prompt strategy. Each baseline run generates its own random question set.
+
+**Controlled mode (Ph1a + Ph1b — shared question set):** Separates question generation
+from answer generation so all baselines answer identical inputs.
+
+- **Ph1a** (`python main.py questions`): Generates only `question` and `equipment_problem`
+  for each category using the `question_gen` prompt strategy. Saves to
+  `output/_shared/questions.json` with stable `trace_id`s.
+- **Ph1b** (`--shared-questions` flag): Loads the shared question set and generates
+  answer fields (`answer`, `tools_required`, `steps`, `safety_info`, `tips`) using the
+  baseline's strategy system prompt combined with the `answer_only` user template. The
+  same `trace_id`s from Ph1a are reused, enabling row-by-row comparison across baselines.
+
+**Why this matters:** In default mode, a strategy that happens to draw easier questions
+will score better even if its answering quality is identical. The controlled mode holds
+questions constant so any difference in Ph4/Ph5 scores is attributable to the answering
+strategy, not question difficulty.
 
 **Rationale:** Instructor wraps the OpenAI API with Pydantic-backed retries, so the
 model is coerced into emitting valid JSON that matches the `QAPair` schema before the
@@ -154,17 +195,19 @@ co-occur.
 
 ### Phase 5 — Quality Evaluation (LLM-as-Judge)
 
-**What it does:** A second LLM judge scores each sample across nine quality dimensions:
-`answer_coherence`, `answer_completeness`, `step_actionability`, `tool_realism`,
-`safety_specificity`, `tip_usefulness`, `problem_answer_alignment`, `appropriate_scope`,
-and `category_accuracy`. Each dimension has a pass/fail threshold defined in its YAML
-config under `quality_dimensions/`. A sample passes overall only if it passes all nine.
+**What it does:** A second LLM judge scores each sample across six quality dimensions
+(D1–D6). Each dimension gets its own dedicated `judge_binary` call for isolation —
+batching multiple criteria into one prompt causes attention interference that degrades
+accuracy. A sample passes overall if its mean dimension score is ≥ 0.8 (i.e., at least
+5 of 6 dimensions pass).
 
 **Rationale:** Where Phase 4 looks for specific defects, Phase 5 evaluates positive
 quality attributes. Using a dedicated judge model (configurable via `LLM_JUDGE_MODEL`)
 separates the roles: a cheaper, faster model can generate data while a more capable model
-acts as the quality gate. Defining dimensions and thresholds in YAML makes it easy to
-adjust criteria or add new dimensions without touching Python code.
+acts as the quality gate. The mean threshold (≥ 0.8) is more forgiving than all-or-nothing
+— one weak dimension does not collapse the entire score, which was inflating failure rates
+under the old conjunctive gate. Defining dimensions and thresholds in YAML makes it easy
+to adjust criteria or add new dimensions without touching Python code.
 
 ---
 
@@ -309,21 +352,21 @@ Criteria are defined in `failure_modes/<name>.yaml`. Add a new file to introduce
 
 ## Quality Dimensions Reference (Phase 5)
 
-Nine pass/fail scores assigned per sample by the LLM judge:
+Six pass/fail scores assigned per sample by the LLM judge (one `judge_binary` call per dimension):
 
-| Dimension | Threshold | Description |
-|---|---|---|
-| `answer_coherence` | 90% | Narrative flow, logical progression from problem to resolution |
-| `answer_completeness` | 85% | Answer covers all necessary steps without leaving critical gaps |
-| `step_actionability` | 85% | Every step has a specific action verb and enough detail to execute |
-| `tool_realism` | 95% | All tools cost < $50 and are available at hardware stores |
-| `safety_specificity` | 90% | Names a specific hazard and gives a specific protective action |
-| `tip_usefulness` | 85% | Tips are non-obvious, task-specific, and provide concrete value |
-| `problem_answer_alignment` | 95% | Answer directly addresses the stated problem without drift |
-| `appropriate_scope` | 95% | Complexity matches what an average homeowner can handle |
-| `category_accuracy` | 98% | Q&A pair clearly belongs to the stated repair category |
+| Dim | Field | Threshold | Description |
+|---|---|---|---|
+| D1 | `answer_completeness` | 85% | Answer covers all key repair stages end-to-end |
+| D2 | `safety_specificity` | 90% | Names a specific hazard and gives a specific protective action |
+| D3 | `tool_realism` | 95% | All tools cost < $50 and are available at hardware stores |
+| D4 | `appropriate_scope` | 95% | Fix targets only the broken component; complexity matches the problem |
+| D5 | `context_clarity` | 90% | Answer directly addresses the stated equipment_problem |
+| D6 | `tip_usefulness` | 85% | At least one tip is non-obvious, task-specific, and actionable |
 
-Criteria and thresholds are defined in `quality_dimensions/<name>.yaml`. Edit a file to adjust a threshold or criteria without touching Python code.
+**Overall pass:** mean of all 6 dim scores ≥ 0.8 (i.e., at least 5 of 6 must pass).
+
+Criteria, thresholds, and judge prompts are defined in `quality_dimensions/<name>.yaml`.
+Edit a file to adjust a threshold or criteria without touching Python code.
 
 ---
 
@@ -331,17 +374,17 @@ Criteria and thresholds are defined in `quality_dimensions/<name>.yaml`. Edit a 
 
 ```
 src/
-├── main.py                   # CLI orchestrator — all 7 phases + compare/agreement/mock subcommands
+├── main.py                   # CLI orchestrator — all 7 phases + compare/agreement/mock/questions subcommands
 ├── config.py                 # Settings (env vars / .env)
-├── schema.py                 # Pydantic schemas shared across all phases
+├── schema.py                 # Pydantic schemas shared across all phases (incl. SharedQuestion)
 ├── llm_client.py             # Cached OpenAI-compatible client with backoff
-├── prompts.py                # Prompt template loader (reads prompts/<strategy>/)
+├── prompts.py                # Prompt template loader (load_prompt_templates, load_answer_templates)
 │
-├── phase1_generation.py      # LLM generation via Instructor
-├── phase2_validation.py      # Structural validation
+├── phase1_generation.py      # LLM generation via Instructor (Ph1 full + Ph1a/Ph1b split)
+├── phase2_validation.py      # Structural validation + heuristic gates + deduplication
 ├── phase3_benchmark.py       # Judge calibration against real-world benchmark
-├── phase4_failure_labeling.py # LLM-as-Judge: 6 failure modes
-├── phase5_quality_eval.py    # LLM-as-Judge: 9 quality dimensions
+├── phase4_failure_labeling.py # LLM-as-Judge: 6 failure modes (one call per mode)
+├── phase5_quality_eval.py    # LLM-as-Judge: 6 quality dimensions (one call per dim)
 ├── phase6_analysis.py        # Analysis, visualizations, reports + benchmark gap
 ├── phase7_correction.py      # Data-driven prompt correction with iterative loop
 ├── mock_seeder.py            # Mock pipeline seeder — phases 1–6 with no API calls
@@ -349,21 +392,28 @@ src/
 ├── human_labeler.py          # Interactive CLI for collecting human labels
 │
 ├── prompts/                  # Prompt templates organised by strategy
-│   ├── zero_shot/            # 5 category YAMLs
+│   ├── zero_shot/            # 5 category YAMLs — full Q&A generation
 │   ├── few_shot/
 │   ├── chain_of_thought/
-│   └── human_feedback/       # Corrected prompts targeting observed failures
+│   ├── human_feedback/       # Corrected prompts targeting observed failures (Phase 7)
+│   ├── question_gen/         # Ph1a: generates only question + equipment_problem
+│   └── answer_only/          # Ph1b: answer-only user template (system from strategy dir)
 │
 ├── failure_modes/            # One YAML per failure mode (Phase 4)
 │   ├── incomplete_answer.yaml
 │   ├── safety_violations.yaml
 │   └── ...
 │
-├── quality_dimensions/       # One YAML per quality dimension (Phase 5)
-│   ├── answer_coherence.yaml
-│   ├── step_actionability.yaml
-│   └── ...
+├── quality_dimensions/       # One YAML per quality dimension D1–D6 (Phase 5)
+│   ├── answer_completeness.yaml   # D1
+│   ├── safety_specificity.yaml    # D2
+│   ├── tool_realism.yaml          # D3
+│   ├── appropriate_scope.yaml     # D4
+│   ├── context_clarity.yaml       # D5
+│   └── tip_usefulness.yaml        # D6
 │
 └── output/                   # One subdirectory per run (gitignored)
+    ├── _shared/              # Shared question set for controlled baseline comparison
+    │   └── questions.json    # Written by 'python main.py questions'
     └── <batch-label>/
 ```
