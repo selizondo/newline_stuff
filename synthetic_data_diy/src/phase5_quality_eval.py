@@ -61,8 +61,9 @@ def load_quality_dimensions(config_dir: Path = DEFAULT_QUALITY_DIMS_DIR) -> list
     return dims
 
 
-# Module-level constant — loaded once; mirrors the pattern in phase4_failure_labeling.py
+# Module-level constants
 QUALITY_DIMENSIONS: list[QualityDimension] = load_quality_dimensions()
+OVERALL_QUALITY_THRESHOLD = 0.8  # mean dim score required for overall_quality_pass (≥5/6 dims)
 
 
 class QualityEvaluator:
@@ -88,7 +89,7 @@ class QualityEvaluator:
                 obs_context=obs_context,
                 name=f"phase5.{dim.name}",
             )
-        overall_pass = 1 if all(v == 1 for v in scores.values()) else 0
+        overall_pass = 1 if sum(scores.values()) / len(scores) >= OVERALL_QUALITY_THRESHOLD else 0
         return QualityEvalResult(
             trace_id=result.trace_id,
             category=result.category,
