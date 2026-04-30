@@ -1,0 +1,30 @@
+category: plumbing_repair
+user: |
+  A homeowner is asking this specific repair question. Use this exact question and equipment_problem in your response:
+
+  Question: {question}
+  Equipment Problem: {equipment_problem}
+
+  Before writing your answer, reason through each of these:
+  1. What is the root cause of this specific problem? Be precise — name the part or mechanism.
+  2. What tools are actually required? Only include items under $50 available at a standard hardware store.
+  3. What is the exact safety hazard — name the specific risk (voltage level, pressure, temperature) and the precise protective action a homeowner must take?
+  4. What is one non-obvious professional tip most homeowners would not think of?
+  5. What are the ordered steps, written with specific actionable verbs (no vague words like "check" or "look")?
+
+  After reasoning through the above, return ONLY a valid JSON object — do not include your reasoning in the output:
+  {{
+    "question": "{question}",
+    "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+    "equipment_problem": "{equipment_problem}",
+    "tools_required": ["<tool 1>", "<tool 2>"],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>"],
+    "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+  }}
+
+  Rules:
+  - Copy the question and equipment_problem EXACTLY as given — do not rephrase
+  - tools_required: homeowner-accessible tools, each <$50
+  - steps: at least 4 ordered, specific, actionable steps
+  - Do NOT wrap JSON in markdown code fences

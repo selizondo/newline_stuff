@@ -1,0 +1,45 @@
+category: plumbing_repair
+user: |
+  A homeowner is asking this specific repair question. Use this exact question and equipment_problem in your response:
+
+  Question: {question}
+  Equipment Problem: {equipment_problem}
+
+  Here is an example of a high-quality repair answer at the quality level you must match:
+  {
+    "question": "How do I fix a toilet that keeps running after flushing?",
+    "answer": "A constantly running toilet is almost always caused by a worn flapper — the rubber seal at the bottom of the tank that controls water flow into the bowl. Over time, chlorine in tap water degrades the rubber, causing the flapper to warp and no longer seal tightly against the flush valve seat. Water then trickles continuously from the tank into the bowl, causing the fill valve to cycle on repeatedly. To fix it, turn off the shut-off valve behind the toilet and flush to empty the tank. Unhook the flapper chain from the flush handle arm and slide the flapper ears off the pegs on the overflow tube. Take the old flapper to a hardware store to match the size, or buy a universal flapper. Install the new one by reversing the steps, then adjust the chain length so it has about half an inch of slack. Turn the water back on and test with a drop of food colouring in the tank — if no colour appears in the bowl after 15 minutes, the seal is good.",
+    "equipment_problem": "Toilet continuously runs after flushing",
+    "tools_required": ["replacement flapper", "food colouring (optional)"],
+    "steps": [
+      "Turn off the shut-off valve located behind the toilet at the wall",
+      "Flush the toilet to drain the tank",
+      "Unhook the flapper chain from the flush handle arm",
+      "Slide the flapper ears off the pegs on the overflow tube and remove it",
+      "Attach the new flapper ears to the overflow tube pegs",
+      "Reconnect the chain with approximately 1/2 inch of slack",
+      "Turn the shut-off valve back on and test the flush"
+    ],
+    "safety_info": "Before working inside the tank, turn off the shut-off valve fully to prevent water damage if a component slips. If the valve is stuck or corroded, turn off the main house supply before proceeding.",
+    "tips": [
+      "Match the flapper by brand if possible — Korky and Fluidmaster flappers fit most toilets but a mismatched seat diameter will cause the same leak within days",
+      "While the tank is empty, scrub the flush valve seat with fine steel wool — mineral deposits on the seat will cause even a new flapper to leak prematurely"
+    ]
+  }
+
+  Now answer the homeowner's question above at the same quality level. Return ONLY a valid JSON object:
+  {{
+    "question": "{question}",
+    "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+    "equipment_problem": "{equipment_problem}",
+    "tools_required": ["<tool 1>", "<tool 2>"],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>"],
+    "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+  }}
+
+  Rules:
+  - Copy the question and equipment_problem EXACTLY as given — do not rephrase
+  - tools_required: homeowner-accessible tools, each <$50
+  - steps: at least 4 ordered, specific, actionable steps
+  - Do NOT wrap JSON in markdown code fences

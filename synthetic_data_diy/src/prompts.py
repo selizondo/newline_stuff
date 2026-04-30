@@ -48,7 +48,10 @@ def load_answer_templates(strategy: str = "zero_shot") -> list[dict]:
             f"Available strategies (subdirs of prompts/): {available}"
         )
 
-    answer_only_dir = PROMPTS_DIR / "answer_only"
+    # Strategy-specific answer_only dir takes precedence over the base one.
+    # This lets CoT and few_shot embed their reasoning scaffold / example in the user prompt.
+    strategy_answer_dir = PROMPTS_DIR / "answer_only" / strategy
+    answer_only_dir = strategy_answer_dir if strategy_answer_dir.is_dir() else PROMPTS_DIR / "answer_only"
     if not answer_only_dir.is_dir():
         raise FileNotFoundError(f"answer_only prompt directory not found: {answer_only_dir}")
 

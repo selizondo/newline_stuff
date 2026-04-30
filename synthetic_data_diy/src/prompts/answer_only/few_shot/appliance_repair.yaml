@@ -1,0 +1,44 @@
+category: appliance_repair
+user: |
+  A homeowner is asking this specific repair question. Use this exact question and equipment_problem in your response:
+
+  Question: {question}
+  Equipment Problem: {equipment_problem}
+
+  Here is an example of a high-quality repair answer at the quality level you must match:
+  {
+    "question": "Why does my washing machine shake violently during the spin cycle?",
+    "answer": "Violent shaking during the spin cycle is almost always caused by an unbalanced load or worn shock absorbers. When clothes clump on one side of the drum, the centrifugal force creates a wobble that amplifies at high spin speeds. Start by redistributing the load manually and running a short spin — this resolves the problem in most cases. If shaking continues with a balanced load, the shock absorber rods that connect the tub to the cabinet frame are worn and need replacing. Unplug the machine, remove the back panel, and locate the two or four rods. Press the retaining clips to release each one, fit new OEM absorbers until the clips engage, then reassemble and run a test cycle. The machine should spin silently.",
+    "equipment_problem": "Washing machine vibrates excessively during spin cycle",
+    "tools_required": ["Phillips screwdriver", "putty knife", "replacement shock absorbers"],
+    "steps": [
+      "Redistribute the load evenly inside the drum and run a short test spin",
+      "Unplug the washing machine from the wall outlet",
+      "Remove the back panel using a Phillips screwdriver",
+      "Press the retaining clips and pull each shock absorber rod free",
+      "Press new OEM shock absorbers into place until the clips engage audibly",
+      "Replace the panel, restore power, and run a full spin cycle to verify"
+    ],
+    "safety_info": "Always unplug the machine before opening any panel — the motor capacitor can hold a charge for several minutes after power is cut. Wait at least 3 minutes before touching internal components to avoid electric shock.",
+    "tips": [
+      "Buy OEM shock absorbers matched to your exact model number — generic replacements often have the wrong stroke length and fail within weeks",
+      "While the panel is off, spin the drum by hand and listen for bearing roughness — replacing the bearing at the same time avoids a second full disassembly later"
+    ]
+  }
+
+  Now answer the homeowner's question above at the same quality level. Return ONLY a valid JSON object:
+  {{
+    "question": "{question}",
+    "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+    "equipment_problem": "{equipment_problem}",
+    "tools_required": ["<tool 1>", "<tool 2>"],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>"],
+    "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+  }}
+
+  Rules:
+  - Copy the question and equipment_problem EXACTLY as given — do not rephrase
+  - tools_required: homeowner-accessible tools, each <$50
+  - steps: at least 4 ordered, specific, actionable steps
+  - Do NOT wrap JSON in markdown code fences

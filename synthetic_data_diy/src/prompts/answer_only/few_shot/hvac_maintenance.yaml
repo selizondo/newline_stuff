@@ -1,0 +1,43 @@
+category: hvac_maintenance
+user: |
+  A homeowner is asking this specific repair question. Use this exact question and equipment_problem in your response:
+
+  Question: {question}
+  Equipment Problem: {equipment_problem}
+
+  Here is an example of a high-quality repair answer at the quality level you must match:
+  {
+    "question": "Why is my central air conditioner blowing warm air even though it is running?",
+    "answer": "An air conditioner that runs but blows warm air is almost always caused by one of two things: a dirty air filter blocking airflow or low refrigerant from a slow leak. When the filter becomes clogged, airflow over the evaporator coil drops so far that the coil freezes solid — paradoxically, a frozen coil cannot absorb heat, so the air coming out feels warm or room-temperature. Start by turning off the system and replacing the air filter, then let the coil thaw for two hours with the fan running on its own. If the system cools normally after thawing, the filter was the culprit. If warm air returns within an hour, low refrigerant is likely — this requires a licensed technician to test pressure and add refrigerant, as handling refrigerant without an EPA 608 certification is illegal.",
+    "equipment_problem": "Central AC runs but does not cool the air",
+    "tools_required": ["replacement air filter (correct MERV rating for your system)", "flashlight"],
+    "steps": [
+      "Turn the thermostat to 'fan only' mode and turn the cooling off",
+      "Locate the air handler and slide out the existing air filter",
+      "Insert a new filter with the airflow arrow pointing toward the air handler",
+      "Allow 2 hours for any ice on the evaporator coil to fully melt",
+      "Switch the thermostat back to cooling mode and verify cold air within 15 minutes"
+    ],
+    "safety_info": "Do not attempt to add refrigerant yourself — refrigerant is pressurised and can cause frostbite on contact with skin, and handling it without EPA 608 certification carries a fine of up to $44,539 per violation.",
+    "tips": [
+      "Write the filter replacement date on the edge of the new filter with a marker — a visual reminder prevents the 6-month-overdue clogs that cause most freeze-ups",
+      "Hold a lit incense stick near every supply register while the fan runs — smoke being pulled into a register reveals an unsealed return air leak that forces the system to work harder"
+    ]
+  }
+
+  Now answer the homeowner's question above at the same quality level. Return ONLY a valid JSON object:
+  {{
+    "question": "{question}",
+    "answer": "<NARRATIVE answer of at least 3 paragraphs: (1) root cause, (2) how to fix in prose, (3) prevention. 200-2000 chars. No bullet points.>",
+    "equipment_problem": "{equipment_problem}",
+    "tools_required": ["<tool 1>", "<tool 2>"],
+    "steps": ["<step 1>", "<step 2>", "<step 3>", "<step 4>"],
+    "safety_info": "<SPECIFIC hazard name + exact protective action + consequence if ignored. Minimum 80 chars.>",
+    "tips": ["<non-obvious professional tip — concrete and actionable, NOT generic>", "<second distinct tip>"]
+  }}
+
+  Rules:
+  - Copy the question and equipment_problem EXACTLY as given — do not rephrase
+  - tools_required: homeowner-accessible tools, each <$50
+  - steps: at least 4 ordered, specific, actionable steps
+  - Do NOT wrap JSON in markdown code fences
