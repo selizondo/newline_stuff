@@ -57,14 +57,31 @@ questions (Ph1b):
 
 ```bash
 # Ph1a — generate shared questions once (5 per category = 25 total)
+# Saved to data/shared_questions.json at the project root (survives --overwrite)
 python main.py questions --samples-per-category 5
 
-# Ph1b — all baselines answer the same questions, then evaluate
+# Ph1b — all active baselines answer the same questions, then run Phases 2–6
+# (mock strategy is skipped automatically; it uses BenchmarkGenerator instead)
 python main.py --phase 1-6 --all-active --shared-questions
+
+# Alternatively, run each strategy explicitly with its own batch label:
+python main.py run --batch-label shared-zero_shot --prompt-strategy zero_shot  --phase 1-6 --shared-questions
+python main.py run --batch-label shared-few_shot  --prompt-strategy few_shot   --phase 1-6 --shared-questions
+python main.py run --batch-label shared-cot       --prompt-strategy chain_of_thought --phase 1-6 --shared-questions
+
+# Cross-batch comparison for the shared-questions group
+# (compare subcommand uses active_labels(); for explicit sets call directly)
+python -c "
+from pathlib import Path
+from phase6_analysis import run_multi_batch_comparison
+run_multi_batch_comparison(Path('output'), labels={'shared-zero_shot','shared-few_shot','shared-cot'})
+"
 ```
 
-Shared questions are saved to `output/_shared/questions.json`. All baselines receive
-the same `trace_id`s so results can be joined row-by-row for per-question comparison.
+Shared questions are saved to `data/shared_questions.json` at the project root —
+outside `output/` so they survive `--overwrite` and output directory cleanup.
+All baselines receive the same `trace_id`s so results can be joined row-by-row for
+per-question comparison.
 
 ## Configuration
 
@@ -126,7 +143,7 @@ from answer generation so all baselines answer identical inputs.
 
 - **Ph1a** (`python main.py questions`): Generates only `question` and `equipment_problem`
   for each category using the `question_gen` prompt strategy. Saves to
-  `output/_shared/questions.json` with stable `trace_id`s.
+  `data/shared_questions.json` (project root, outside `output/`) with stable `trace_id`s.
 - **Ph1b** (`--shared-questions` flag): Loads the shared question set and generates
   answer fields (`answer`, `tools_required`, `steps`, `safety_info`, `tips`) using the
   baseline's strategy system prompt combined with the `answer_only` user template. The
