@@ -233,5 +233,6 @@ class ComparisonReport(BaseModel):
     per_mode_delta: dict[str, float]
     baseline_quality_pass_rate: float
     corrected_quality_pass_rate: float
+    per_dim_quality_delta: dict[str, float] = {}  # per-dim pass rate delta (baseline − corrected; positive = worse)
     iterations_run: int = 1         # how many correction iterations were needed
     diversity_score: float = 1.0    # fraction of answer pairs with Jaccard similarity ≤ 0.8 (1.0 = fully diverse)

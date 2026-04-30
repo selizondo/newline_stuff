@@ -336,7 +336,7 @@ def _plan_phase7(base_output: Path, max_iterations: int) -> None:
     else:
         n_valid = len(selected["failure_df"])
 
-    n_judges = len(FAILURE_MODE_FIELDS) + len(QUALITY_DIMENSION_FIELDS)  # 6 + 9 = 15
+    n_judges = len(FAILURE_MODE_FIELDS) + len(QUALITY_DIMENSION_FIELDS)  # 6 + 6 = 12
     per_iter = n_valid * n_judges
     total = per_iter * max_iterations
     print(f"Estimated judge calls: {n_valid} × {n_judges} × {max_iterations} iterations = {total} total")
@@ -385,11 +385,11 @@ def _run_phases(
     # ── Phase 1: Generation ───────────────────────────────────────────────
     if phase_start <= 1 <= phase_end:
         import logfire
-        if shared_questions:
+        if shared_questions and _gen_model != "mock":
             t0 = _section("PHASE 1b — Answer Generation (shared question set)")
-            from phase1_generation import load_shared_questions, run_answer_generation_phase
-            shared_qs = load_shared_questions(base_output)
-            print(f"Loaded {len(shared_qs)} shared questions from {base_output / '_shared'}")
+            from phase1_generation import load_shared_questions, run_answer_generation_phase, SHARED_QUESTIONS_PATH
+            shared_qs = load_shared_questions()
+            print(f"Loaded {len(shared_qs)} shared questions from {SHARED_QUESTIONS_PATH.resolve()}")
             with logfire.span(
                 "phase.answer_generation batch={batch_label}",
                 batch_label=batch_label, phase="1b",
@@ -404,6 +404,8 @@ def _run_phases(
                     overwrite=overwrite,
                 )
         else:
+            if shared_questions and _gen_model == "mock":
+                print("  Note: mock strategy uses BenchmarkGenerator — shared questions not applicable.")
             t0 = _section("PHASE 1 — Generation")
             with logfire.span(
                 "phase.generation batch={batch_label}",
@@ -493,7 +495,8 @@ def _run_phases(
     if phase_start <= 6 <= phase_end:
         t0 = _section("PHASE 6 — Failure & Quality Analysis")
         from phase6_analysis import run_analysis_phase
-        run_analysis_phase(output_dir=output_dir)
+        _ph6_corrected = corrected_dir if (corrected_dir / "before_after_comparison.json").exists() else None
+        run_analysis_phase(output_dir=output_dir, corrected_dir=_ph6_corrected)
         phase_timings["6 Analysis"] = time.monotonic() - t0
         _phase_done(t0)
 
@@ -582,7 +585,7 @@ def main() -> None:
     parser.add_argument("--skip-human-labels", action="store_true", dest="skip_human_labels",
                         help="Skip generating mock human_labels.json (mock subcommand)")
     parser.add_argument("--shared-questions", action="store_true", dest="shared_questions",
-                        help="Ph1b mode: generate answers for the shared question set in output/_shared/questions.json "
+                        help="Ph1b mode: generate answers for the shared question set in data/shared_questions.json "
                              "instead of generating new questions. Run 'python main.py questions' first.")
 
     args = parser.parse_args()
@@ -645,16 +648,15 @@ def main() -> None:
         from config import get_settings
         settings = get_settings()
         gen_model = args.generation_model or settings.generation_model
-        n = args.samples_per_category or (args.samples // 5)
+        n = args.samples_per_category or 5
         _banner("HOME DIY REPAIR Q&A — QUESTION GENERATION (Ph1a)")
         print(f"Generation model   : {gen_model}")
         print(f"Questions/category : {n}  (5 categories → {n*5} total)")
-        print(f"Output             : {(base_output / '_shared' / 'questions.json').absolute()}")
-        from phase1_generation import run_question_generation_phase
+        from phase1_generation import run_question_generation_phase, SHARED_QUESTIONS_PATH
+        print(f"Output             : {SHARED_QUESTIONS_PATH.resolve()}")
         questions = run_question_generation_phase(
             num_per_category=n,
             generation_model=gen_model,
-            output_base=base_output,
             seed=args.seed,
             overwrite=args.overwrite,
         )

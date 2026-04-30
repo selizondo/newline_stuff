@@ -1,0 +1,152 @@
+[
+  {
+    "trace_id": "43d11432-4185-4616-8767-2d7370cd4f99",
+    "category": "appliance_repair",
+    "question": "What should I check if my refrigerator is not cooling properly but the light is still on?",
+    "equipment_problem": "Refrigerator is not cooling despite the light being on"
+  },
+  {
+    "trace_id": "9b3525f3-6f24-4425-a9c2-59d72a1e55d1",
+    "category": "appliance_repair",
+    "question": "How can I fix my refrigerator that isn't cooling properly, and what steps should I take to diagnose the issue?",
+    "equipment_problem": "Refrigerator isn't cooling properly"
+  },
+  {
+    "trace_id": "23173d28-2a1f-416f-9749-1f4bccb187fd",
+    "category": "appliance_repair",
+    "question": "What should I check if my refrigerator is running but not cooling properly?",
+    "equipment_problem": "Refrigerator runs but doesn't cool"
+  },
+  {
+    "trace_id": "db269502-b03a-4fb1-b458-3887a7540ae9",
+    "category": "appliance_repair",
+    "question": "How can I fix my refrigerator that is not cooling properly and making a strange clicking noise?",
+    "equipment_problem": "Refrigerator is not cooling and making a clicking noise"
+  },
+  {
+    "trace_id": "cf4d19ca-833b-4444-86b2-de743b0ff302",
+    "category": "appliance_repair",
+    "question": "What could be causing my refrigerator to make a loud buzzing noise and how can I fix it?",
+    "equipment_problem": "Refrigerator makes a loud buzzing noise"
+  },
+  {
+    "trace_id": "9aada26f-ce7a-4734-a3cf-286e68396da6",
+    "category": "electrical_repair",
+    "question": "What should I do if my bathroom light fixture is flickering and I suspect a loose connection?",
+    "equipment_problem": "Bathroom light fixture flickering intermittently"
+  },
+  {
+    "trace_id": "1ec2205e-7271-478f-9baf-43950314e613",
+    "category": "electrical_repair",
+    "question": "What should I check if my kitchen light fixture flickers when I turn it on, but the bulb is new?",
+    "equipment_problem": "Kitchen light fixture flickers when turned on"
+  },
+  {
+    "trace_id": "bcd2e035-f722-4940-9425-6a7dd5a4dcc9",
+    "category": "electrical_repair",
+    "question": "What could be causing my kitchen outlet to not work despite confirming that the circuit breaker is not tripped?",
+    "equipment_problem": "Kitchen outlet not working despite circuit breaker being fine"
+  },
+  {
+    "trace_id": "1cdeb94e-638f-4965-a4d4-c6dffbcbc281",
+    "category": "electrical_repair",
+    "question": "What should I do if my bathroom light flickers and the bulb is new?",
+    "equipment_problem": "Bathroom light flickers despite a new bulb being installed"
+  },
+  {
+    "trace_id": "a35dc537-26cc-459f-8fd8-02eea2b64688",
+    "category": "electrical_repair",
+    "question": "How can I fix a light switch that only works intermittently, causing the light to flicker on and off?",
+    "equipment_problem": "Light switch causes flickering lights intermittently"
+  },
+  {
+    "trace_id": "6bb06575-666d-4072-81d4-eec39bbc3514",
+    "category": "general_home_repair",
+    "question": "How can I fix a leaking kitchen faucet that constantly drips even when turned off?",
+    "equipment_problem": "Kitchen faucet leaks water continuously"
+  },
+  {
+    "trace_id": "004ad24b-8ca6-4391-9e13-de1b2afc7768",
+    "category": "general_home_repair",
+    "question": "What steps can I take to fix a leaky kitchen faucet that drips continuously even when it's turned off?",
+    "equipment_problem": "Kitchen faucet leaks when turned off"
+  },
+  {
+    "trace_id": "634a4840-84dc-4a35-9398-0eb8c291f0b9",
+    "category": "general_home_repair",
+    "question": "What should I do if my kitchen faucet is leaking from the base and dripping water onto the counter?",
+    "equipment_problem": "Kitchen faucet leaking from the base"
+  },
+  {
+    "trace_id": "b937c3de-7dc9-4e84-b469-ccf5e64bb3fa",
+    "category": "general_home_repair",
+    "question": "How can I fix a leaky faucet that drips water continuously even when the handle is turned off?",
+    "equipment_problem": "Leaky faucet drips constantly"
+  },
+  {
+    "trace_id": "da59a0f0-5c46-4f69-81cc-696b92916c41",
+    "category": "general_home_repair",
+    "question": "What can I do to fix my leaking kitchen faucet that drips water even when it's turned off?",
+    "equipment_problem": "Kitchen faucet leaks water when turned off"
+  },
+  {
+    "trace_id": "7cf6a31f-880b-438e-9914-2ff694f1ee5c",
+    "category": "hvac_maintenance",
+    "question": "What steps can I take to fix a furnace that is making a loud banging noise when it starts up?",
+    "equipment_problem": "Furnace makes loud banging noise on startup"
+  },
+  {
+    "trace_id": "1cfb8725-e201-4446-8859-399f8fd74e5b",
+    "category": "hvac_maintenance",
+    "question": "How can I clean the air filter in my furnace to improve its efficiency and airflow?",
+    "equipment_problem": "Furnace is blowing weak air and not heating effectively"
+  },
+  {
+    "trace_id": "46ecb9a0-c83b-4070-bb23-a2875e92d291",
+    "category": "hvac_maintenance",
+    "question": "How can I clean the air filter in my central air conditioning unit to improve airflow?",
+    "equipment_problem": "Air conditioning unit is not blowing cold air."
+  },
+  {
+    "trace_id": "18f49d89-004e-405b-a610-4ca549de3482",
+    "category": "hvac_maintenance",
+    "question": "How can I fix my furnace if it keeps shutting off even when the thermostat is set to a higher temperature?",
+    "equipment_problem": "Furnace shuts off before reaching set temperature"
+  },
+  {
+    "trace_id": "5a9903ea-77a8-461d-8500-a7f5e219bc52",
+    "category": "hvac_maintenance",
+    "question": "How can I fix my furnace if it keeps shutting off after just a few minutes of running?",
+    "equipment_problem": "Furnace shuts off shortly after starting up"
+  },
+  {
+    "trace_id": "1c72818d-7521-4b5c-8d33-d2e29f8e1b17",
+    "category": "plumbing_repair",
+    "question": "How can I fix my bathroom sink faucet that is leaking water even when the handle is turned off?",
+    "equipment_problem": "Bathroom sink faucet leaks when off"
+  },
+  {
+    "trace_id": "8d7bd810-4024-40a9-91d9-4fd8975348b2",
+    "category": "plumbing_repair",
+    "question": "How can I fix a leaky toilet tank that drips water constantly into the bowl?",
+    "equipment_problem": "Toilet tank leaks water into the bowl"
+  },
+  {
+    "trace_id": "5c682541-c9c4-47cd-bbc6-f7a67aafa3d7",
+    "category": "plumbing_repair",
+    "question": "How can I fix my toilet that keeps running even after it has been flushed?",
+    "equipment_problem": "Toilet runs continuously after flushing"
+  },
+  {
+    "trace_id": "e8014205-f389-4550-8a1f-6184212975b8",
+    "category": "plumbing_repair",
+    "question": "What steps can I take to fix a leaky toilet that keeps running after flushing?",
+    "equipment_problem": "Toilet keeps running after flushing"
+  },
+  {
+    "trace_id": "006395cf-0b17-459d-9851-f90bc9c76c8a",
+    "category": "plumbing_repair",
+    "question": "What is the best way to fix a leaking toilet tank that continuously drips water into the bowl?",
+    "equipment_problem": "Toilet tank leaks into the bowl"
+  }
+]

@@ -265,6 +265,8 @@ class FailureAnalyzer:
         output_dir: Path,
         summary: AnalysisSummary,
         batch_label: str = "",
+        ph7_report: dict | None = None,
+        iteration_log: list[dict] | None = None,
     ) -> Path:
         """Write analysis_summary.html to output_dir with embedded charts and observations."""
 
@@ -413,6 +415,102 @@ class FailureAnalyzer:
                 f'<div class="observations"><h3>Observations</h3><ul>{obs_html}</ul></div></div>'
             )
 
+        # ── Ph7 before/after section ─────────────────────────────────────────
+        ph7_html = ""
+        if ph7_report:
+            def _arrow_fail(delta: float) -> str:
+                return "↓" if delta > 0 else ("→" if delta == 0 else "↑")
+
+            def _arrow_qual(delta: float) -> str:
+                return "↑" if delta > 0 else ("→" if delta == 0 else "↓")
+
+            def _color_fail(delta: float) -> str:
+                return "#2ecc71" if delta > 0 else ("#e74c3c" if delta < 0 else "#999")
+
+            def _color_qual(delta: float) -> str:
+                return "#2ecc71" if delta > 0 else ("#e74c3c" if delta < 0 else "#999")
+
+            target_color = "#2ecc71" if ph7_report.get("target_met") else "#e74c3c"
+            target_text = "YES ✓" if ph7_report.get("target_met") else "NO ✗"
+            iters = ph7_report.get("iterations_run", "?")
+            diversity = ph7_report.get("diversity_score", 1.0)
+
+            bfr = ph7_report.get("baseline_failure_rate", 0) * 100
+            cfr = ph7_report.get("corrected_failure_rate", 0) * 100
+            bqp = ph7_report.get("baseline_quality_pass_rate", 0) * 100
+            cqp = ph7_report.get("corrected_quality_pass_rate", 0) * 100
+            imp = ph7_report.get("improvement_pct", 0)
+
+            overview_rows = "".join([
+                f"<tr><td>Failure Rate</td><td>{bfr:.1f}%</td><td>{cfr:.1f}%</td>"
+                f'<td style="color:{_color_fail(bfr-cfr)}">{_arrow_fail(bfr-cfr)} {abs(bfr-cfr):.1f}pp</td></tr>',
+                f"<tr><td>Quality Pass</td><td>{bqp:.1f}%</td><td>{cqp:.1f}%</td>"
+                f'<td style="color:{_color_qual(cqp-bqp)}">{_arrow_qual(cqp-bqp)} {abs(cqp-bqp):.1f}pp</td></tr>',
+                f"<tr><td>Improvement</td><td>—</td><td>—</td>"
+                f'<td style="color:{_color_fail(imp)}">{imp:+.1f}%</td></tr>',
+            ])
+
+            mode_rows = "".join(
+                f"<tr><td>{_label(m)}</td>"
+                f'<td style="color:{_color_fail(d)}">{_arrow_fail(d)} {d*100:+.1f}pp</td></tr>'
+                for m, d in ph7_report.get("per_mode_delta", {}).items()
+            )
+
+            dim_rows = "".join(
+                f"<tr><td>{_label(d)}</td>"
+                f'<td style="color:{_color_qual(v)}">{_arrow_qual(v)} {v*100:+.1f}pp</td></tr>'
+                for d, v in ph7_report.get("per_dim_quality_delta", {}).items()
+            )
+
+            iter_rows = ""
+            if iteration_log:
+                for entry in iteration_log:
+                    m = entry.get("metrics", {})
+                    fr = m.get("failure_rate", 0) * 100
+                    qp = m.get("quality_pass_rate", 0) * 100
+                    ip = m.get("improvement_pct", 0)
+                    met = "✓" if m.get("targets_met") else "✗"
+                    met_color = "#2ecc71" if m.get("targets_met") else "#e74c3c"
+                    iter_rows += (
+                        f"<tr><td>{entry.get('iteration','?')}</td>"
+                        f"<td>{fr:.1f}%</td><td>{qp:.1f}%</td><td>{ip:+.1f}%</td>"
+                        f'<td style="color:{met_color};font-weight:700">{met}</td></tr>'
+                    )
+
+            iter_table = (
+                f"<h3>Iteration Log</h3>"
+                f"<table><tr><th>Iter</th><th>Failure Rate</th><th>Quality Pass</th>"
+                f"<th>Improvement</th><th>Targets Met</th></tr>{iter_rows}</table>"
+            ) if iter_rows else ""
+
+            ph7_html = f"""
+<div class="chart-section ph7-section">
+  <h2>Phase 7 — Prompt Correction Results</h2>
+  <div class="ph7-meta">
+    <span>Iterations run: <strong>{iters}</strong></span>
+    &nbsp;&bull;&nbsp;
+    <span>Targets met: <strong style="color:{target_color}">{target_text}</strong></span>
+    &nbsp;&bull;&nbsp;
+    <span>Diversity score: <strong>{diversity:.2f}</strong></span>
+  </div>
+  <h3>Before / After</h3>
+  <table>
+    <tr><th>Metric</th><th>Baseline</th><th>Corrected</th><th>Delta</th></tr>
+    {overview_rows}
+  </table>
+  <div class="ph7-tables">
+    <div>
+      <h3>Per-Mode Failure Delta</h3>
+      <table><tr><th>Mode</th><th>Delta</th></tr>{mode_rows}</table>
+    </div>
+    <div>
+      <h3>Per-Dim Quality Delta</h3>
+      <table><tr><th>Dimension</th><th>Delta</th></tr>{dim_rows}</table>
+    </div>
+  </div>
+  {iter_table}
+</div>"""
+
         title_label = f"Analysis Summary — {batch_label}" if batch_label else "Analysis Summary"
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         html = f"""<!DOCTYPE html>
@@ -440,6 +538,13 @@ header p{{margin-top:.4rem;font-size:.9rem;opacity:.7}}
 .observations h3{{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:#666;margin-bottom:.6rem}}
 .observations ul{{padding-left:1.2rem}}
 .observations li{{font-size:.9rem;line-height:1.6;margin-bottom:.3rem;color:#444}}
+.ph7-section{{border-top:4px solid #8e44ad}}
+.ph7-meta{{font-size:.9rem;color:#555;margin-bottom:1rem}}
+.ph7-section h3{{font-size:.95rem;margin:1rem 0 .5rem;color:#444}}
+.ph7-section table{{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:.5rem}}
+.ph7-section th,.ph7-section td{{padding:.4rem .7rem;border:1px solid #eee;text-align:left}}
+.ph7-section th{{background:#f5f5f5;font-weight:600}}
+.ph7-tables{{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:.5rem}}
 footer{{text-align:center;font-size:.75rem;color:#999;padding:2rem}}
 </style>
 </head>
@@ -448,6 +553,7 @@ footer{{text-align:center;font-size:.75rem;color:#999;padding:2rem}}
 <div class="container">
 <div class="metrics">{cards_html}</div>
 {sections_html}
+{ph7_html}
 </div>
 <footer>Synthetic Data DIY — Phase 6 Analysis</footer>
 </body>
@@ -666,7 +772,22 @@ def run_analysis_phase(
     report_path.write_text(json.dumps(summary.model_dump(), indent=2))
     print(f"  Saved → {report_path}")
 
-    analyzer.generate_summary_page(output_dir, summary, batch_label=output_dir.name)
+    ph7_report = None
+    iteration_log = None
+    if corrected_dir:
+        ba_path = corrected_dir / "before_after_comparison.json"
+        il_path = corrected_dir / "iteration_log.json"
+        if ba_path.exists():
+            ph7_report = json.loads(ba_path.read_text())
+        if il_path.exists():
+            iteration_log = json.loads(il_path.read_text())
+
+    analyzer.generate_summary_page(
+        output_dir, summary,
+        batch_label=output_dir.name,
+        ph7_report=ph7_report,
+        iteration_log=iteration_log,
+    )
 
     print(f"\nAnalysis summary:")
     print(f"  Overall failure rate : {summary.overall_failure_rate*100:.1f}%")

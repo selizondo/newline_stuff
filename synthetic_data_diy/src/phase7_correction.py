@@ -187,7 +187,38 @@ def run_correction_phase(
     Each iteration injects the current run's failure context into the generation
     prompt so successive runs target the remaining weak spots.
     """
-    # Load baseline metrics
+    # ── Phase A gate: human/LLM agreement check ───────────────────────────
+    human_labels_path = baseline_dir / "human_labels.json"
+    if human_labels_path.exists():
+        print("Phase A — checking human/LLM agreement before correction...")
+        from agreement import run_agreement, AGREEMENT_THRESHOLD
+        agreement_report = run_agreement(
+            batch_label=baseline_dir.name,
+            output_dir=baseline_dir.parent,
+        )
+        if not agreement_report["all_dimensions_meet_threshold"]:
+            failing_dims = [
+                d["label"]
+                for d in agreement_report["dimensions"].values()
+                if not d["meets_threshold"]
+            ]
+            raise RuntimeError(
+                f"Phase A gate failed — {len(failing_dims)} dimension(s) below "
+                f"{AGREEMENT_THRESHOLD*100:.0f}% agreement: {', '.join(failing_dims)}.\n"
+                "Fix the corresponding quality_dimensions/*.yaml, re-run Phase 5, "
+                "then re-run agreement before attempting Phase 7."
+            )
+        print("Phase A gate passed — judge agreement ≥ 80% on all dims.\n")
+    else:
+        print(
+            "Phase A skipped — no human_labels.json found in baseline dir.\n"
+            "  Run: python human_labeler.py --batch-label "
+            f"{baseline_dir.name}\n"
+            "  Then: python main.py agreement --batch-label "
+            f"{baseline_dir.name}\n"
+        )
+
+    # ── Load baseline metrics ─────────────────────────────────────────────
     baseline_failure_csv = baseline_dir / "failure_labeled_data.csv"
     baseline_quality_csv = baseline_dir / "quality_eval_data.csv"
     if not baseline_failure_csv.exists():
@@ -310,6 +341,12 @@ def run_correction_phase(
         if mode in baseline_fdf.columns and mode in corrected_fdf.columns
     }
 
+    per_dim_quality_delta = {
+        dim: round(float(corrected_qdf[dim].mean()) - float(baseline_qdf[dim].mean()), 4)
+        for dim in QUALITY_DIM_NAMES
+        if dim in baseline_qdf.columns and dim in corrected_qdf.columns
+    }
+
     report = ComparisonReport(
         baseline_failure_rate=baseline_failure_rate,
         corrected_failure_rate=corrected_failure_rate,
@@ -318,6 +355,7 @@ def run_correction_phase(
         per_mode_delta=per_mode_delta,
         baseline_quality_pass_rate=baseline_quality_pass,
         corrected_quality_pass_rate=corrected_quality_pass,
+        per_dim_quality_delta=per_dim_quality_delta,
         iterations_run=iteration,
         diversity_score=round(diversity_score, 4),
     )
@@ -340,5 +378,9 @@ def run_correction_phase(
     for mode, delta in per_mode_delta.items():
         arrow = "↓" if delta > 0 else ("→" if delta == 0 else "↑")
         print(f"  {arrow} {mode.replace('_', ' ').title()}: {delta*100:+.1f}pp")
+    print("\nPer-dim quality delta (positive = more passing):")
+    for dim, delta in per_dim_quality_delta.items():
+        arrow = "↑" if delta > 0 else ("→" if delta == 0 else "↓")
+        print(f"  {arrow} {dim.replace('_', ' ').title()}: {delta*100:+.1f}pp")
     print(f"\nSaved → {report_path}")
     return report

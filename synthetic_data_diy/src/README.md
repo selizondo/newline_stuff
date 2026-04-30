@@ -417,3 +417,62 @@ src/
     │   └── questions.json    # Written by 'python main.py questions'
     └── <batch-label>/
 ```
+
+---
+
+## Architecture — data flow
+
+```
+prompts/<strategy>/<category>.yaml
+    │
+    ▼
+phase1_generation.py    → generation_results.json
+    │   (model="mock" → BenchmarkGenerator samples from benchmark_cache.py instead)
+    ▼
+phase2_validation.py    → structurally_valid_qa_pairs.json
+    ▼
+phase3_benchmark.py     → benchmark_eval.csv + benchmark_report.json
+    ▼                     (verifies judge BEFORE it scores generated data)
+phase4_failure_labeling.py  → failure_labeled_data.csv
+    ▼
+phase5_quality_eval.py  → quality_eval_data.csv
+    ▼
+phase6_analysis.py      → *.png charts + analysis_report.json
+                           (auto-loads benchmark_eval.csv for gap comparison)
+    ▼
+phase7_correction.py    → corrected/ (data-driven re-run with iterative loop)
+```
+
+All output files land in `output/<batch-label>/`. Phases can be re-run independently as long as `--batch-label` is consistent.
+
+---
+
+## Baseline registry
+
+`baselines.yaml` is the single source of truth for active baselines. `baselines.py` exposes `active_baselines()`, `baseline_labels()`, etc. via an `lru_cache`-backed loader.
+
+```yaml
+baselines:
+  - label: baseline-run        # output directory name
+    strategy: zero_shot
+    active: true
+  - label: baseline-few-shot
+    strategy: few_shot
+    active: true               # set false to exclude from --all-active and compare
+```
+
+`python main.py stats` marks active baselines with `★`. `python main.py compare` filters to active labels only.
+
+---
+
+## Key design notes
+
+- `schema.py` is the single source of truth for all Pydantic schemas, `FAILURE_MODE_FIELDS` (6), `QUALITY_DIMENSION_FIELDS` (6), and `HUMAN_TO_LLM` (maps human labeler dim names → LLM dim names).
+- `benchmark_cache.py` owns all HuggingFace loading. Two cache levels: raw rows (`_benchmark_cache/raw_rows.json`) and schema-validated rows (`_benchmark_cache/validated_rows.json`). `phase3_benchmark.py` and `BenchmarkGenerator` both call `sample_validated_rows()` — no HF dependency after first run.
+- Failure mode criteria live in `failure_modes/*.yaml`; quality dimension criteria and thresholds live in `quality_dimensions/*.yaml`. Add a new YAML to extend — no Python changes needed.
+- Prompt templates live in `prompts/<strategy>/`. Adding a new strategy requires only a new folder with 5 category YAMLs.
+- `generation_model` flows to Phase 1 and Phase 7 generation. `judge_model` flows to Phases 3, 4, 5, and Phase 7 re-evaluation.
+- Phase 3 benchmark calibration runs **before** any judge use on generated data. If calibration fails (< 95% pass rate), the pipeline warns but continues — downstream quality scores should be treated with caution.
+- Phase 6 analysis is re-run after Phase 7 to update charts in-place with corrected data.
+- Phase 7 injects observed failure rates as plain-text context into generation prompts so corrections are data-driven, not static. Iterates up to `--max-iterations` (default 3), stopping early when failure ≤ 15%, quality pass ≥ 80%, and improvement ≥ 80% are all simultaneously met.
+- `python main.py` with no arguments prints help (does not start a pipeline run).
