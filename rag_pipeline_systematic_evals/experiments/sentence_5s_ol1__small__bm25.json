@@ -1,0 +1,777 @@
+{
+  "experiment_id": "sentence_5s_ol1__small__bm25",
+  "config": {
+    "chunk": {
+      "strategy": "sentence",
+      "parser": "pdfplumber",
+      "chunk_size": 256,
+      "overlap": 50,
+      "sentences_per_chunk": 5,
+      "overlap_sentences": 1,
+      "breakpoint_threshold": 0.65,
+      "max_sentences": 10
+    },
+    "embed": {
+      "model": "text-embedding-3-small",
+      "batch_size": 100,
+      "cache_dir": "data/embed_cache"
+    },
+    "retrieval": {
+      "method": "bm25",
+      "top_k": 5,
+      "alpha": 0.5
+    },
+    "qa_pairs_per_config": 25
+  },
+  "metrics": {
+    "recall_at_k": {
+      "1": 0.48,
+      "3": 0.8,
+      "5": 0.84,
+      "10": 0.92
+    },
+    "precision_at_k": {
+      "1": 0.48,
+      "3": 0.26666666666666666,
+      "5": 0.168,
+      "10": 0.09200000000000001
+    },
+    "mrr": 0.635,
+    "map_score": 0.635,
+    "ndcg_at_k": {
+      "1": 0.48,
+      "3": 0.6609487605714333,
+      "5": 0.678175822894369,
+      "10": 0.7050427054501189
+    },
+    "total_queries": 25,
+    "avg_retrieval_time_s": 0.0023433124797884375
+  },
+  "query_results": [
+    {
+      "question": "Who is responsible for managing visa petition appeals that fall under the jurisdiction of the Board of Immigration Appeals?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "d7f630b2-123c-49cb-9d6f-e4bdc7152ecc",
+        "da36b091-1ea6-451d-be05-5e8cf6287edd",
+        "56bbd1ce-cdce-4396-9161-bf89e6100c0b",
+        "ff0b3e4c-c940-49a0-b748-20a2d7373c23",
+        "43e5ed62-420a-497c-8830-3f7c34118529"
+      ],
+      "relevant_ids": [
+        "d7f630b2-123c-49cb-9d6f-e4bdc7152ecc"
+      ],
+      "retrieval_time": 0.003,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What is the primary role of the immigration judge in Continued Detention Review cases involving aliens who have been ordered removed?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "faddc9a1-cfb8-49b7-9c7e-26cd7a2299b7",
+        "5914bdc5-80ac-413d-b76e-da71061a002c",
+        "56bbd1ce-cdce-4396-9161-bf89e6100c0b",
+        "d5dfb896-5671-4c9d-b71e-213fdc024869",
+        "3686d425-904a-4dda-86d1-df334a474d02"
+      ],
+      "relevant_ids": [
+        "5914bdc5-80ac-413d-b76e-da71061a002c"
+      ],
+      "retrieval_time": 0.0024,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "What was the overall grant rate for asylum applications in fiscal year 2010?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "930a8c2b-edf3-42b0-87c4-845ee8481509",
+        "5dc4c88b-10be-4735-be53-2b7a0ecdcb6c",
+        "89ea9058-48d4-42d1-8ec1-52fb3d1dbfb6",
+        "8b7ffebb-7921-44a7-b572-f69f5f6708d4",
+        "b1f99a7d-433b-42b0-bcbd-d58610121e7f"
+      ],
+      "relevant_ids": [
+        "930a8c2b-edf3-42b0-87c4-845ee8481509"
+      ],
+      "retrieval_time": 0.0019,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What criteria must an alien meet for an immigration judge to allow voluntary departure for up to 60 days?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "ced3cffb-e588-405b-a517-6e3d01a486da",
+        "ea84f458-7e0f-4938-8f69-ff5a78060d67",
+        "f4729115-90c4-461f-a411-00005a7f31c6",
+        "56bbd1ce-cdce-4396-9161-bf89e6100c0b",
+        "1e2c184c-23a0-48aa-89d3-c35c7696c103"
+      ],
+      "relevant_ids": [
+        "ea84f458-7e0f-4938-8f69-ff5a78060d67"
+      ],
+      "retrieval_time": 0.0025,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "What information does Tab M provide regarding certain aliens and their protection?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "554fd934-8415-4305-9ffa-f525702d24a7",
+        "94b8a0e7-2a5e-485a-9924-6250e76875c8",
+        "076ee79f-32a7-4342-92d3-c983898cb9d2",
+        "f4729115-90c4-461f-a411-00005a7f31c6",
+        "fab07958-681b-4211-9fea-3db6c2329f46"
+      ],
+      "relevant_ids": [
+        "554fd934-8415-4305-9ffa-f525702d24a7"
+      ],
+      "retrieval_time": 0.0019,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What is the time frame for an asylum application to be adjudicated according to the IIRIRA, and how does this affect the applicant's ability to obtain employment authorization?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "6c670998-2b2a-4d9e-972c-0b785523f4e7",
+        "076ee79f-32a7-4342-92d3-c983898cb9d2",
+        "7fa29c2d-4a00-4c52-bf20-2d3c746cff12",
+        "ddba5ca7-48b7-4d3b-9a6d-f573f220c514",
+        "43e5ed62-420a-497c-8830-3f7c34118529"
+      ],
+      "relevant_ids": [
+        "6c670998-2b2a-4d9e-972c-0b785523f4e7"
+      ],
+      "retrieval_time": 0.0037,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "Which five languages accounted for 90 percent of immigration court proceedings completed in FY 2006?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "029b1f4f-3492-4a72-8f6f-eda8c67d0491",
+        "72f4d3f7-ed47-4223-8fc0-3eece266a230",
+        "d4d9d799-87d3-40bc-97ed-2d7cb9477e96",
+        "c2fecab4-c361-4ab5-ab7f-17414caf4dcc",
+        "8ce6cd21-14f9-40f7-b6a0-a864116bc278"
+      ],
+      "relevant_ids": [
+        "d4d9d799-87d3-40bc-97ed-2d7cb9477e96"
+      ],
+      "retrieval_time": 0.0024,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.5,
+      "ndcg@5": 0.5,
+      "ndcg@10": 0.5,
+      "rr": 0.3333333333333333,
+      "ap": 0.3333333333333333
+    },
+    {
+      "question": "What options does an alien have if they claim U.S. citizenship but DHS finds no basis for that claim?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "9be26331-aa88-4707-835f-5209c889d289",
+        "cb7aa2d4-8ef6-49d6-91aa-af3b8ccab54a",
+        "3686d425-904a-4dda-86d1-df334a474d02",
+        "e4094b51-3368-42ee-9f8f-a71f9ec0be90",
+        "a886221d-459d-4c0d-bb8d-f5a2600cce36"
+      ],
+      "relevant_ids": [
+        "9be26331-aa88-4707-835f-5209c889d289"
+      ],
+      "retrieval_time": 0.0023,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What role does the Court Administrator play in the management of an immigration court?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "56bbd1ce-cdce-4396-9161-bf89e6100c0b",
+        "076ee79f-32a7-4342-92d3-c983898cb9d2",
+        "ff92948b-01c5-4f9f-8779-06cffd816a4d",
+        "09039a00-d197-4b57-b19e-1c2fc9e3c909",
+        "d7f630b2-123c-49cb-9d6f-e4bdc7152ecc"
+      ],
+      "relevant_ids": [
+        "ff92948b-01c5-4f9f-8779-06cffd816a4d"
+      ],
+      "retrieval_time": 0.002,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.5,
+      "ndcg@5": 0.5,
+      "ndcg@10": 0.5,
+      "rr": 0.3333333333333333,
+      "ap": 0.3333333333333333
+    },
+    {
+      "question": "What are the main differences between exclusion proceedings and deportation cases as described in the text?",
+      "question_type": "comparative",
+      "retrieved_ids": [
+        "00f09f3e-745b-48cd-bc61-a39cf308ce86",
+        "f7e84fb7-e17f-448f-9c16-56d9bef8404e",
+        "7c5740f2-4053-4563-be54-7ecf582f6951",
+        "d13cf863-0aaa-468d-803d-17b245fb645e",
+        "988576f1-a606-4f6b-bd59-4cdbd7a44e23"
+      ],
+      "relevant_ids": [
+        "00f09f3e-745b-48cd-bc61-a39cf308ce86"
+      ],
+      "retrieval_time": 0.0024,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What options are available for an alien who disagrees with an asylum officer's determination regarding their fear of persecution or torture?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "409e0f67-0018-4fd3-a5cb-eb4495e59b8e",
+        "d5dfb896-5671-4c9d-b71e-213fdc024869",
+        "a886221d-459d-4c0d-bb8d-f5a2600cce36",
+        "a421b92f-0c4b-438b-8974-c9305ed35103",
+        "e4094b51-3368-42ee-9f8f-a71f9ec0be90"
+      ],
+      "relevant_ids": [
+        "a886221d-459d-4c0d-bb8d-f5a2600cce36"
+      ],
+      "retrieval_time": 0.0024,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.5,
+      "ndcg@5": 0.5,
+      "ndcg@10": 0.5,
+      "rr": 0.3333333333333333,
+      "ap": 0.3333333333333333
+    },
+    {
+      "question": "What is the process for a respondent to challenge the bond amount set by the Department of Homeland Security?",
+      "question_type": "analytical",
+      "retrieved_ids": [
+        "9849749c-b599-4b4f-91c6-d20f4efd4f7a",
+        "702bd8d6-fa45-46e8-bab4-c27c9ff41f9c",
+        "8e77b4d1-ad6d-4c42-8ad9-080608be2b9e",
+        "ddba5ca7-48b7-4d3b-9a6d-f573f220c514",
+        "c7379538-4d94-45a1-91a8-1df4113768c3"
+      ],
+      "relevant_ids": [
+        "9849749c-b599-4b4f-91c6-d20f4efd4f7a"
+      ],
+      "retrieval_time": 0.0022,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "How have the numbers of appeals to the Board of Immigration Appeals changed from FY 2009 to FY 2010 compared to appeals from Immigration Judges?",
+      "question_type": "comparative",
+      "retrieved_ids": [
+        "5c3f69cd-df12-4916-88cf-0c2e451dc627",
+        "88432905-0bf2-4b3b-bedc-59aa13b7b975",
+        "d13cf863-0aaa-468d-803d-17b245fb645e",
+        "7cab1b2e-183b-4060-bf26-c202407ac00d",
+        "00ca8c07-b66a-4b25-87cc-2cdd9574eb5f"
+      ],
+      "relevant_ids": [
+        "3454a9c9-75d2-4157-a691-e1514fbbecae"
+      ],
+      "retrieval_time": 0.0033,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.3562071871080222,
+      "rr": 0.16666666666666666,
+      "ap": 0.16666666666666666
+    },
+    {
+      "question": "What percentage of immigration court proceedings in FY 2010 involved applications for relief?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "c5a0d33b-8ab9-4d35-ae43-0399251ac162",
+        "554fd934-8415-4305-9ffa-f525702d24a7",
+        "9ddb5493-731e-4e69-9904-84ce2321c572",
+        "edbb7fdd-3396-402f-b039-83a100b82134",
+        "767615fe-41ef-44ae-85a9-ae61c17a72b3"
+      ],
+      "relevant_ids": [
+        "9ddb5493-731e-4e69-9904-84ce2321c572"
+      ],
+      "retrieval_time": 0.0015,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.5,
+      "ndcg@5": 0.5,
+      "ndcg@10": 0.5,
+      "rr": 0.3333333333333333,
+      "ap": 0.3333333333333333
+    },
+    {
+      "question": "What must happen if an arriving alien expresses a fear of returning home during expedited removal proceedings?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "1e7ded46-fd50-4488-9f5f-c4f9c5e35e73",
+        "66309e5c-a2b2-43c6-91a5-24f96defc9a6",
+        "3686d425-904a-4dda-86d1-df334a474d02",
+        "409e0f67-0018-4fd3-a5cb-eb4495e59b8e",
+        "a886221d-459d-4c0d-bb8d-f5a2600cce36"
+      ],
+      "relevant_ids": [
+        "1e7ded46-fd50-4488-9f5f-c4f9c5e35e73"
+      ],
+      "retrieval_time": 0.0015,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What trend can be observed in the asylum or withholding of removal grant rate from FY 2006 to FY 2010?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "b1f99a7d-433b-42b0-bcbd-d58610121e7f",
+        "8b7ffebb-7921-44a7-b572-f69f5f6708d4",
+        "930a8c2b-edf3-42b0-87c4-845ee8481509",
+        "363376cd-b26f-406a-aff3-96fcea1019c6",
+        "89ea9058-48d4-42d1-8ec1-52fb3d1dbfb6"
+      ],
+      "relevant_ids": [
+        "b1f99a7d-433b-42b0-bcbd-d58610121e7f"
+      ],
+      "retrieval_time": 0.0022,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What are the two types of protections available to aliens who might face torture if removed from the United States under the 1999 regulations?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "2f034b54-3eec-453d-b0a2-ea09b9baa169",
+        "d5dfb896-5671-4c9d-b71e-213fdc024869",
+        "f668c0a7-7518-43c3-a2ee-54b269df464a",
+        "e4094b51-3368-42ee-9f8f-a71f9ec0be90",
+        "f020d937-f746-4340-b243-cb23374324e0"
+      ],
+      "relevant_ids": [
+        "2f034b54-3eec-453d-b0a2-ea09b9baa169"
+      ],
+      "retrieval_time": 0.0025,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What steps could the INS District Director take regarding an inadmissible applicant before April 1, 1997?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "c48d04db-b5e1-46b5-8576-0fd9fa06691b",
+        "8cd89325-0054-4ca4-bb22-43bb82b3ae6b",
+        "e9601f77-c4fc-4a67-a42c-b48a8bd99a27",
+        "2e47bbd4-3128-47bd-a375-a8a04617abc7",
+        "19d670ab-80cc-4530-b26d-feb44132b081"
+      ],
+      "relevant_ids": [
+        "8cd89325-0054-4ca4-bb22-43bb82b3ae6b"
+      ],
+      "retrieval_time": 0.0018,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "What criteria must an alien meet to be eligible for withholding of removal according to the Immigration and Nationality Act?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "f668c0a7-7518-43c3-a2ee-54b269df464a",
+        "b274cca8-8dbc-4fcb-b7aa-c4de1cbf866b",
+        "161aa576-0c6a-4bc0-aa01-3604d75b175b",
+        "cb7aa2d4-8ef6-49d6-91aa-af3b8ccab54a",
+        "e3291406-3398-4633-82c8-7220d01e48ce"
+      ],
+      "relevant_ids": [
+        "b274cca8-8dbc-4fcb-b7aa-c4de1cbf866b"
+      ],
+      "retrieval_time": 0.0028,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "What is the purpose of the Institutional Hearing Program established by the Department of Justice?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "e3291406-3398-4633-82c8-7220d01e48ce",
+        "1f125db3-d6b4-460f-b872-bac0e27c2708",
+        "9bd4640d-af5f-433e-8637-9f3701a5b0ce",
+        "c283fd93-ec08-48b7-87ba-0ddffe15d583",
+        "869c0895-9ee7-419b-abeb-adf0b31a25d7"
+      ],
+      "relevant_ids": [
+        "e3291406-3398-4633-82c8-7220d01e48ce"
+      ],
+      "retrieval_time": 0.0015,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What additional circumstances can lead to a case being classified as an 'other' asylum completion?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "9be26331-aa88-4707-835f-5209c889d289",
+        "c7379538-4d94-45a1-91a8-1df4113768c3",
+        "03c5e385-bda7-4fe3-8345-6740eb9e63d6",
+        "161aa576-0c6a-4bc0-aa01-3604d75b175b",
+        "ef0448fc-10c3-43cc-a1f4-5f0b0174c67f"
+      ],
+      "relevant_ids": [
+        "58dd0f70-91c1-4228-ad80-ee1cd48cad99"
+      ],
+      "retrieval_time": 0.0021,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "What qualifications did an alien need to meet in order to apply for Suspension of Deportation?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "7c5740f2-4053-4563-be54-7ecf582f6951",
+        "932715d3-6e6d-4bee-806a-411ae10e2922",
+        "da08fa61-c822-4e3e-b15d-9436edefedef",
+        "5914bdc5-80ac-413d-b76e-da71061a002c",
+        "d13cf863-0aaa-468d-803d-17b245fb645e"
+      ],
+      "relevant_ids": [
+        "2b95a0e9-d64f-4e72-8740-19df443e2024"
+      ],
+      "retrieval_time": 0.0029,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.31546487678572877,
+      "rr": 0.125,
+      "ap": 0.125
+    },
+    {
+      "question": "What is the role of the Board of Immigration Appeals in relation to immigration laws and decisions?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "56bbd1ce-cdce-4396-9161-bf89e6100c0b",
+        "e7040fde-1fa4-4fe2-bd5b-f2927c2bbaa6",
+        "f4ae9a31-1d3b-4526-a6e8-98c3b338a5f3",
+        "a78909c8-aa4f-4491-8a1d-c9318df2fc61",
+        "da36b091-1ea6-451d-be05-5e8cf6287edd"
+      ],
+      "relevant_ids": [
+        "a78909c8-aa4f-4491-8a1d-c9318df2fc61"
+      ],
+      "retrieval_time": 0.0025,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.43067655807339306,
+      "ndcg@10": 0.43067655807339306,
+      "rr": 0.25,
+      "ap": 0.25
+    },
+    {
+      "question": "What are the two methods through which individuals can apply for asylum according to the regulations mentioned?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "9be26331-aa88-4707-835f-5209c889d289",
+        "6e64aa15-0950-4a65-bb45-e2f3e67b0c5b",
+        "e4094b51-3368-42ee-9f8f-a71f9ec0be90",
+        "f4ae9a31-1d3b-4526-a6e8-98c3b338a5f3",
+        "f231c4ea-7784-4962-ad55-221471a2a2d9"
+      ],
+      "relevant_ids": [
+        "363376cd-b26f-406a-aff3-96fcea1019c6"
+      ],
+      "retrieval_time": 0.0022,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "What changes regarding refugee admission criteria were made by the Illegal Immigration Reform and Immigrant Responsibility Act of 1996?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "cb7aa2d4-8ef6-49d6-91aa-af3b8ccab54a",
+        "e7040fde-1fa4-4fe2-bd5b-f2927c2bbaa6",
+        "da08fa61-c822-4e3e-b15d-9436edefedef",
+        "9bd4640d-af5f-433e-8637-9f3701a5b0ce",
+        "00f09f3e-745b-48cd-bc61-a39cf308ce86"
+      ],
+      "relevant_ids": [
+        "cb7aa2d4-8ef6-49d6-91aa-af3b8ccab54a"
+      ],
+      "retrieval_time": 0.0025,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    }
+  ]
+}

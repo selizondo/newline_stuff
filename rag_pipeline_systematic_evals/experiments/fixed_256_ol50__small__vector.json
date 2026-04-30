@@ -1,0 +1,777 @@
+{
+  "experiment_id": "fixed_256_ol50__small__vector",
+  "config": {
+    "chunk": {
+      "strategy": "fixed_size",
+      "parser": "pdfplumber",
+      "chunk_size": 256,
+      "overlap": 50,
+      "sentences_per_chunk": 5,
+      "overlap_sentences": 1,
+      "breakpoint_threshold": 0.65,
+      "max_sentences": 10
+    },
+    "embed": {
+      "model": "text-embedding-3-small",
+      "batch_size": 100,
+      "cache_dir": "data/embed_cache"
+    },
+    "retrieval": {
+      "method": "vector",
+      "top_k": 5,
+      "alpha": 0.5
+    },
+    "qa_pairs_per_config": 25
+  },
+  "metrics": {
+    "recall_at_k": {
+      "1": 0.4,
+      "3": 0.56,
+      "5": 0.6,
+      "10": 0.84
+    },
+    "precision_at_k": {
+      "1": 0.4,
+      "3": 0.18666666666666665,
+      "5": 0.12,
+      "10": 0.084
+    },
+    "mrr": 0.5065396825396825,
+    "map_score": 0.5065396825396825,
+    "ndcg_at_k": {
+      "1": 0.4,
+      "3": 0.4904743802857166,
+      "5": 0.5077014426086524,
+      "10": 0.583209092297452
+    },
+    "total_queries": 25,
+    "avg_retrieval_time_s": 0.21412736352183856
+  },
+  "query_results": [
+    {
+      "question": "What is the role of immigration judges in immigration courts?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "c723d26c-66b3-4d51-a099-5fc11e905f54",
+        "0be352f1-00fc-4ef8-b6b4-e3ef6d7339f3",
+        "9a344eaf-a1b1-4842-806a-5d870b654b9d",
+        "c4c2749b-d772-4867-ae0e-29990c2a2ac1",
+        "4b9af74c-4ed1-4b7f-99b9-7f7ab8d5585e"
+      ],
+      "relevant_ids": [
+        "c723d26c-66b3-4d51-a099-5fc11e905f54"
+      ],
+      "retrieval_time": 0.2797,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "Which city has the highest total of numbers listed in the chunk?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "a7471898-6586-47b5-a238-cf3b652f9387",
+        "0074401e-b022-4ab2-925e-58cd2803c09a",
+        "796b52c9-7260-4070-9226-eae69ef2f3c1",
+        "1ba9a05a-2412-4aef-a5c3-c34ef0a38dea",
+        "a29d89e8-de06-4112-b5dd-b544f0c73ee9"
+      ],
+      "relevant_ids": [
+        "796b52c9-7260-4070-9226-eae69ef2f3c1"
+      ],
+      "retrieval_time": 0.1492,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.5,
+      "ndcg@5": 0.5,
+      "ndcg@10": 0.5,
+      "rr": 0.3333333333333333,
+      "ap": 0.3333333333333333
+    },
+    {
+      "question": "What information is provided in Table 5 regarding court proceedings?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "d4faccd8-f80e-462c-a0fd-c720c4012ae3",
+        "e7803d0d-9cf3-4130-817d-e093660e3233",
+        "8f032c2e-3fab-4c81-869a-5e5fb451086b",
+        "a062f9d1-fc9d-4b1b-8750-93a82b81f14e",
+        "bb2419b2-2c73-4842-93d1-991e64991161"
+      ],
+      "relevant_ids": [
+        "35d9db83-679f-4bc0-bc0c-981617db1e68"
+      ],
+      "retrieval_time": 0.2068,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.3333333333333333,
+      "rr": 0.14285714285714285,
+      "ap": 0.14285714285714285
+    },
+    {
+      "question": "How many total entries are listed for Cuba in the provided data?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "0c2ae926-34e4-4951-b2fe-db7ad710b717",
+        "a1c7e7cb-6b07-49ea-942e-e8961e6d3c94",
+        "08f8c9be-5c64-45a1-a2bd-2fbf983980b0",
+        "6ec943a2-38ac-43e9-9881-1ad939b17e34",
+        "f281048d-7c7d-4f49-aade-0852a879c4dd"
+      ],
+      "relevant_ids": [
+        "84aef503-5a75-4ef7-a529-9435095c6f60"
+      ],
+      "retrieval_time": 0.1747,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.31546487678572877,
+      "rr": 0.125,
+      "ap": 0.125
+    },
+    {
+      "question": "What conditions must be met for individuals facing persecution to be sent to a third country?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "e509cb04-b868-4d8b-9216-af66f6806be9",
+        "35106135-59d4-4c6a-802f-58cc76828a10",
+        "15321985-e175-415a-9d0f-a44c3487cb3c",
+        "8aea99ae-d828-4e8c-9d17-58e23e8ad1c8",
+        "7fb2c2c7-ce13-4eb2-bbda-33dd69bd8d80"
+      ],
+      "relevant_ids": [
+        "e509cb04-b868-4d8b-9216-af66f6806be9"
+      ],
+      "retrieval_time": 0.4847,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "Which nationality consistently ranked first for asylum grants from FY 2006 to FY 2010?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "4641e95d-6a4d-4a09-b113-b6e33e5f4fa7",
+        "6597379d-14d0-4712-b6db-3e54fb1cd41a",
+        "31774363-6e70-4ad6-8d30-befb5cdb6c86",
+        "c610169b-488d-4d82-99ab-bff7736b7519",
+        "f752a7fc-0a67-4f80-ba5c-f39b12ed08ac"
+      ],
+      "relevant_ids": [
+        "4f0481f0-341d-45e3-bcce-68f63c025920"
+      ],
+      "retrieval_time": 0.1468,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.3010299956639812,
+      "rr": 0.1111111111111111,
+      "ap": 0.1111111111111111
+    },
+    {
+      "question": "What was the percentage decline in asylum receipts as indicated in the report?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "c86e1987-775c-4712-bdbf-0fa6873bf85f",
+        "94ab2664-8353-4a14-a721-29b4db6cae0c",
+        "c0871e07-7dbe-4630-97b0-c663f2ed7353",
+        "ab283a0b-09dc-4985-8c42-c5f693e5e542",
+        "39f0e546-aaf6-4ba5-84de-4ce4cbd96948"
+      ],
+      "relevant_ids": [
+        "ab283a0b-09dc-4985-8c42-c5f693e5e542"
+      ],
+      "retrieval_time": 0.2399,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.43067655807339306,
+      "ndcg@10": 0.43067655807339306,
+      "rr": 0.25,
+      "ap": 0.25
+    },
+    {
+      "question": "What circumstances prompt the initiation of an asylum only case for individuals arriving in the United States?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "1c0113c8-d751-4cd9-926f-fcc0eddcd44a",
+        "8b6343c2-1d90-425e-9a20-f8057411ec45",
+        "64074de1-91eb-4584-a84c-410da423e5fb",
+        "33f4124f-72e6-4f4f-bba9-be6898230ba1",
+        "046a1d30-7f4b-4210-8ad5-91787c4d8744"
+      ],
+      "relevant_ids": [
+        "1c0113c8-d751-4cd9-926f-fcc0eddcd44a"
+      ],
+      "retrieval_time": 0.1637,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "Which country has the highest numerical value in the list provided?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "3340ecd0-0328-4d4c-9fd5-746347747b6b",
+        "ca3671b6-b2d9-44e6-8540-5a3e4d4a8573",
+        "56d82080-83a1-4d82-86ec-9a10c424ba05",
+        "076fae45-6740-4881-9f08-9979f96bf7f7",
+        "ad50bbfe-4791-472b-90fc-ff00e6ccc607"
+      ],
+      "relevant_ids": [
+        "a2410e33-e7e5-4a3b-b8d9-0e3054b50b6c"
+      ],
+      "retrieval_time": 0.1608,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "How did the population of San Diego change compared to the previous figure?",
+      "question_type": "comparative",
+      "retrieved_ids": [
+        "42f04d81-15bc-4b4d-bf70-ed0ae241ed90",
+        "c729300c-e552-4a6d-abfe-f9b229382e67",
+        "0871c081-4413-499d-a717-8ac2c08e5c56",
+        "bb06f8b7-269c-4786-87d0-77458a66db9a",
+        "22794507-a7aa-4d65-8d1e-f1e5fa11705c"
+      ],
+      "relevant_ids": [
+        "7295a341-ebdb-4074-bf70-a452c2639995"
+      ],
+      "retrieval_time": 0.1604,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.31546487678572877,
+      "rr": 0.125,
+      "ap": 0.125
+    },
+    {
+      "question": "What does the term 'Pro Bono' mean in legal contexts?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "5da61b27-547f-4aab-ad3b-4ccb963b2d7b",
+        "60d3db82-d804-4078-a35e-349efba972da",
+        "607228bc-fbbe-4dad-b7cf-9631c7f477e7",
+        "e1fe41de-dd9d-43e4-9e2d-005ffc19076a",
+        "26c393a2-8f78-46a4-83fe-7e3a90984dbd"
+      ],
+      "relevant_ids": [
+        "607228bc-fbbe-4dad-b7cf-9631c7f477e7"
+      ],
+      "retrieval_time": 0.1706,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.5,
+      "ndcg@5": 0.5,
+      "ndcg@10": 0.5,
+      "rr": 0.3333333333333333,
+      "ap": 0.3333333333333333
+    },
+    {
+      "question": "Which country has the highest number of entries in the provided statistics?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "3bad996c-131d-4611-a20f-fcb552394efb",
+        "6c8c6d07-e981-4c5d-85a4-30dd785878ea",
+        "06d193de-4081-4f7a-8fcf-ceb9918306c1",
+        "2010162e-5b27-427f-9d76-d722e2ad3e7e",
+        "c02b4b83-bd4e-48ce-b887-0a5897d27957"
+      ],
+      "relevant_ids": [
+        "a2a1e6d7-7fca-4158-9a13-57c16a9bf024"
+      ],
+      "retrieval_time": 0.1728,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "Which country listed has the highest total count in the data presented?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "47836bb9-c851-4d2e-9379-74984c66d36e",
+        "ca3671b6-b2d9-44e6-8540-5a3e4d4a8573",
+        "21ef4133-500e-4837-9149-0dfa98e591ea",
+        "076fae45-6740-4881-9f08-9979f96bf7f7",
+        "0c2ae926-34e4-4951-b2fe-db7ad710b717"
+      ],
+      "relevant_ids": [
+        "5df596c0-cc8f-443c-8ca9-bdac5631a2d2"
+      ],
+      "retrieval_time": 0.3843,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "What actions can an immigration judge take during a bond redetermination hearing?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "9bdd343e-5c62-49b6-957c-ef17a76b80fc",
+        "190d02e2-1d5c-4d72-959b-9ddd44a56ec8",
+        "8e9460b8-ab43-4ba8-ac2c-23ae6d4f78b4",
+        "0daf6702-73b8-43ec-8b92-f970a3f85b19",
+        "762e3e45-a454-4b2a-a1c7-a7ebc1a3a5b3"
+      ],
+      "relevant_ids": [
+        "9bdd343e-5c62-49b6-957c-ef17a76b80fc"
+      ],
+      "retrieval_time": 0.3499,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "Which city in California had the highest number of individuals listed?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "218805a7-0eaf-4128-ad38-cfd4b759e503",
+        "de69324a-f058-4e3e-8423-68bfae80d232",
+        "796b52c9-7260-4070-9226-eae69ef2f3c1",
+        "52c4fe94-c72b-46d7-b7ed-17f2060936ca",
+        "ebcc9db6-7fa7-4a58-90b3-bfdc84964056"
+      ],
+      "relevant_ids": [
+        "de69324a-f058-4e3e-8423-68bfae80d232"
+      ],
+      "retrieval_time": 0.1976,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "What distinguishes deferral of removal from withholding of removal in terms of termination processes?",
+      "question_type": "comparative",
+      "retrieved_ids": [
+        "03d606b1-08f9-4209-ab5a-f21f32be3bf9",
+        "f8813a7f-3d9e-436b-89cc-eb276d79a374",
+        "0923d515-307b-4f2d-835f-610674a8903a",
+        "055f17ef-978b-4434-af7d-f494074d0051",
+        "fc521e32-2279-41e3-a240-b087ba117e6a"
+      ],
+      "relevant_ids": [
+        "03d606b1-08f9-4209-ab5a-f21f32be3bf9"
+      ],
+      "retrieval_time": 0.2047,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "How many total appeals were recorded in fiscal year 2006?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "c5036d6c-3960-4ca5-a5f9-acd5beaefa10",
+        "b8d87575-8bca-44cc-bbf0-23eafe92d4dd",
+        "eb181f07-adba-45d7-ac30-a4a4dcd3f682",
+        "672f9a3e-8856-41bb-a804-48b66d22936b",
+        "13eacc2f-8345-4420-a475-636a2f1e1661"
+      ],
+      "relevant_ids": [
+        "c5036d6c-3960-4ca5-a5f9-acd5beaefa10"
+      ],
+      "retrieval_time": 0.2639,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "Which nationality was the most common among immigration court completions in FY 2010?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "274046f9-5067-4b5f-b932-e4f7c8b62ae0",
+        "0824e7fc-2437-4dee-9c98-ba96ec5555ea",
+        "1b322d15-8452-4bae-8f25-fd10ffb2205b",
+        "341d854f-1191-41c6-afa9-d824b992f5a7",
+        "aa76bfd5-6271-4a29-9cc0-1636b0f8eaa7"
+      ],
+      "relevant_ids": [
+        "274046f9-5067-4b5f-b932-e4f7c8b62ae0"
+      ],
+      "retrieval_time": 0.1688,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "How did the number of immigration court receipts change from FY 2006 to FY 2010?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "240b4b84-1666-44ec-b31d-6132c008e687",
+        "6f36634f-a565-4998-9721-b8a095913105",
+        "2722fd1c-4688-411c-b529-9b9aed64092e",
+        "c86e1987-775c-4712-bdbf-0fa6873bf85f",
+        "655c63f7-3477-46c8-aebf-d543e628c13e"
+      ],
+      "relevant_ids": [
+        "587b006a-f6be-4039-bb65-f136a9649682"
+      ],
+      "retrieval_time": 0.144,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.2890648263178879,
+      "rr": 0.1,
+      "ap": 0.1
+    },
+    {
+      "question": "How did the total number of Immigration Court matters in Arlington, Virginia change from FY 2009 to FY 2010?",
+      "question_type": "analytical",
+      "retrieved_ids": [
+        "80f16505-90fb-4df8-855d-518cee63afca",
+        "c176e6c8-a088-4c6a-8370-41f0df8ede81",
+        "240b4b84-1666-44ec-b31d-6132c008e687",
+        "88380591-c9dd-43b0-ae61-f9a8cd554988",
+        "6cd29794-d12b-41aa-a2cc-34ac7fbd80d1"
+      ],
+      "relevant_ids": [
+        "80f16505-90fb-4df8-855d-518cee63afca"
+      ],
+      "retrieval_time": 0.2121,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What criteria must an individual meet to qualify for asylum based on their experiences of persecution?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "15321985-e175-415a-9d0f-a44c3487cb3c",
+        "8aea99ae-d828-4e8c-9d17-58e23e8ad1c8",
+        "1975bd9f-4de6-4bdc-a2ce-c44bc6ba54cd",
+        "8b6343c2-1d90-425e-9a20-f8057411ec45",
+        "c22ece30-e678-48dd-ba6f-5f13ac588c1f"
+      ],
+      "relevant_ids": [
+        "8aea99ae-d828-4e8c-9d17-58e23e8ad1c8"
+      ],
+      "retrieval_time": 0.1519,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "Which city listed has the highest number in the second column?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "796b52c9-7260-4070-9226-eae69ef2f3c1",
+        "70cff342-8995-4ee0-b9f1-cd5b628ecde9",
+        "acc023d3-ac67-4065-9639-8672b38a4577",
+        "abd92f81-6c5c-4cc6-a843-3a2be20ced27",
+        "a7471898-6586-47b5-a238-cf3b652f9387"
+      ],
+      "relevant_ids": [
+        "145b5175-a705-4c0b-8abe-5571d225f637"
+      ],
+      "retrieval_time": 0.2439,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "Under what conditions can an alien's status change to lawful permanent resident according to this text?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "1cf00e64-d1ea-4b0a-a584-c6cd7afe5e6e",
+        "daecb516-4bb0-4584-a02e-5c9f4537436a",
+        "53d076e3-e859-47b3-b0e2-c840f1906c4a",
+        "9c64335d-accf-4cf7-86d7-61c47d231aab",
+        "0873058a-9975-44dc-8ae2-e46dd50fe63e"
+      ],
+      "relevant_ids": [
+        "1cf00e64-d1ea-4b0a-a584-c6cd7afe5e6e"
+      ],
+      "retrieval_time": 0.1938,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What is the definition of detained aliens as described in the Year Book?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "aa1f5af2-7375-492f-a10f-8cf76ba5850f",
+        "d1058e1a-28eb-498f-82ba-5c4d2e0caae5",
+        "e562eb30-b982-40cf-b3f7-dbc4bafe1ea1",
+        "a914bc0a-ac74-4754-8434-49d9ef2f2596",
+        "0e1115ff-fa18-48f8-809f-9746eddae9e6"
+      ],
+      "relevant_ids": [
+        "aa1f5af2-7375-492f-a10f-8cf76ba5850f"
+      ],
+      "retrieval_time": 0.1474,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What types of court completions are detailed in the tables for FY 2010?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "d4faccd8-f80e-462c-a0fd-c720c4012ae3",
+        "f167e75f-fcf1-4d76-a45b-6ce4c2535276",
+        "52b02e7e-e1ee-467d-8ad9-5b4a67e9dca5",
+        "91a36687-1f12-4055-be85-5aaf4bc19810",
+        "d2002ac3-12c1-47fd-abbc-9718eb4022ce"
+      ],
+      "relevant_ids": [
+        "6031e86f-60cf-44f6-87e4-a1ca95e40027"
+      ],
+      "retrieval_time": 0.1811,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.3333333333333333,
+      "rr": 0.14285714285714285,
+      "ap": 0.14285714285714285
+    }
+  ]
+}

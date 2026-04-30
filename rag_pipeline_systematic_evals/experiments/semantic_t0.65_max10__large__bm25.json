@@ -1,0 +1,777 @@
+{
+  "experiment_id": "semantic_t0.65_max10__large__bm25",
+  "config": {
+    "chunk": {
+      "strategy": "semantic",
+      "parser": "pdfplumber",
+      "chunk_size": 256,
+      "overlap": 50,
+      "sentences_per_chunk": 5,
+      "overlap_sentences": 1,
+      "breakpoint_threshold": 0.65,
+      "max_sentences": 10
+    },
+    "embed": {
+      "model": "text-embedding-3-large",
+      "batch_size": 100,
+      "cache_dir": "data/embed_cache"
+    },
+    "retrieval": {
+      "method": "bm25",
+      "top_k": 5,
+      "alpha": 0.5
+    },
+    "qa_pairs_per_config": 25
+  },
+  "metrics": {
+    "recall_at_k": {
+      "1": 0.44,
+      "3": 0.64,
+      "5": 0.68,
+      "10": 0.76
+    },
+    "precision_at_k": {
+      "1": 0.44,
+      "3": 0.21333333333333332,
+      "5": 0.136,
+      "10": 0.07600000000000001
+    },
+    "mrr": 0.5579999999999999,
+    "map_score": 0.5579999999999999,
+    "ndcg_at_k": {
+      "1": 0.44,
+      "3": 0.5661859507142915,
+      "5": 0.5816600630036731,
+      "10": 0.6068972531465314
+    },
+    "total_queries": 25,
+    "avg_retrieval_time_s": 0.0017175203177612274
+  },
+  "query_results": [
+    {
+      "question": "Under what circumstances might an immigration judge allow an alien to leave the United States voluntarily?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "72757f54-4981-45a3-aa47-0e5ab4d92a06",
+        "0b0af13c-19ca-4ae2-82dd-2f0411a11b89",
+        "d2ebde0e-ef05-4f98-aaeb-5401d904e031",
+        "a1c9e1ea-d809-4022-8fa2-0e648b94fbeb",
+        "ad84b17c-f0aa-4551-9cd0-218c8c9772f5"
+      ],
+      "relevant_ids": [
+        "ad84b17c-f0aa-4551-9cd0-218c8c9772f5"
+      ],
+      "retrieval_time": 0.0026,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.38685280723454163,
+      "ndcg@10": 0.38685280723454163,
+      "rr": 0.2,
+      "ap": 0.2
+    },
+    {
+      "question": "What is represented in Figures 16, 17, and 18 located on pages K1 and K2?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "e96fad12-b90a-4aab-af9a-ed71cdb04489",
+        "066d0c2a-8f09-4e33-a79c-bee3226e8d01",
+        "2e0ccb29-0a25-4c2d-bb18-82aba8a74b25",
+        "23a19ac1-bac0-4576-ad5d-3762ab7ef285",
+        "f04dabd1-765a-40c7-b317-58ec363033ab"
+      ],
+      "relevant_ids": [
+        "e96fad12-b90a-4aab-af9a-ed71cdb04489"
+      ],
+      "retrieval_time": 0.002,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "Who determines the nature, number of proceedings, and appeals related to immigration court decisions?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "f40048cf-1929-499c-a499-cfe65f60af25",
+        "d765f02a-789f-4b4e-8b1d-d18290819431",
+        "af0235e0-14d9-4fc5-9442-496ebcc7b32b",
+        "3457f615-f0e5-4ea8-b934-a6e8e3e7f898",
+        "0e299c93-ff07-448e-a881-9d6f06eeb300"
+      ],
+      "relevant_ids": [
+        "f40048cf-1929-499c-a499-cfe65f60af25"
+      ],
+      "retrieval_time": 0.0017,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What type of cases primarily occupy the workload of the Board of Immigration Appeals?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "b7d8e57f-fb5b-49ba-9982-81095dd82a7e",
+        "5a6ed4cf-e2ef-4dfd-b1ac-54c9e3b07e1f",
+        "0f4fcb15-8347-4eb4-a462-1e2c73344303",
+        "2e0ccb29-0a25-4c2d-bb18-82aba8a74b25",
+        "4b1a20c1-8392-4fd5-a45e-43bb1408d575"
+      ],
+      "relevant_ids": [
+        "38a80e5c-0423-4db8-8662-0b899bf8f960"
+      ],
+      "retrieval_time": 0.0016,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "What is Adjustment of Status and who qualifies for it?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "454c55f3-63f1-4562-8e89-cf50dc7021f5",
+        "6857120b-5ad0-41d2-9924-df272dc6522f",
+        "4e1ad89f-6912-4bc9-be50-c0724350c167",
+        "5b52d728-4b40-4daa-9c6a-f4fb98f7bbcb",
+        "9ae8d107-3431-4b4b-b8a2-a758501091de"
+      ],
+      "relevant_ids": [
+        "454c55f3-63f1-4562-8e89-cf50dc7021f5"
+      ],
+      "retrieval_time": 0.0011,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What percentage of immigration judge decisions in FY 2010 were related to aliens who did not show up for their hearings?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "ee8daaa4-e20a-45de-8dac-6ac2efc8acae",
+        "40590668-17d7-435e-94d5-9ed7c0fab66c",
+        "38a80e5c-0423-4db8-8662-0b899bf8f960",
+        "a231acf2-6484-4d46-a576-cee4f3d207ae",
+        "e620e335-c388-44bd-88a1-3deeb19f28a9"
+      ],
+      "relevant_ids": [
+        "40590668-17d7-435e-94d5-9ed7c0fab66c"
+      ],
+      "retrieval_time": 0.0026,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "What factors lead to the conclusion that an alien may have a reasonable fear of persecution or torture upon return to their country of removal?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "98697a83-7ca0-4acc-8839-ac372e09c7ed",
+        "8511a983-a353-4881-a1e7-4849b895088f",
+        "79694759-09c6-42f2-b456-1b27745940b9",
+        "08589f83-9488-4016-a220-43eeebd1fa65",
+        "87d166c0-6890-449e-8777-5e3908dac519"
+      ],
+      "relevant_ids": [
+        "98697a83-7ca0-4acc-8839-ac372e09c7ed"
+      ],
+      "retrieval_time": 0.0028,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What happens to the alien if the judge finds there is a reasonable fear?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "5f50466c-899d-4742-848c-d82aa3220cb6",
+        "343f6bea-c5a3-4d9f-a114-fa5cb236f0f4",
+        "0b0af13c-19ca-4ae2-82dd-2f0411a11b89",
+        "8511a983-a353-4881-a1e7-4849b895088f",
+        "98697a83-7ca0-4acc-8839-ac372e09c7ed"
+      ],
+      "relevant_ids": [
+        "5f50466c-899d-4742-848c-d82aa3220cb6"
+      ],
+      "retrieval_time": 0.0018,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What role does a Court Administrator play in an immigration court?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "8e66dec5-dfd2-4e0a-add0-49392ef26345",
+        "2006ccf3-b23d-4380-8122-a77ce5ca560e",
+        "62bc6b6e-9fed-448f-afda-02a13e2383dc",
+        "8511a983-a353-4881-a1e7-4849b895088f",
+        "fd1dd655-b73d-4e45-a6e1-776748135955"
+      ],
+      "relevant_ids": [
+        "21df27f2-c155-45dd-a0d6-22dadb2bfd11"
+      ],
+      "retrieval_time": 0.0013,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.31546487678572877,
+      "rr": 0.125,
+      "ap": 0.125
+    },
+    {
+      "question": "How many years in a row has the number of appeals to the BIA from IJ Decisions decreased?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "0e299c93-ff07-448e-a881-9d6f06eeb300",
+        "0f4fcb15-8347-4eb4-a462-1e2c73344303",
+        "f975c374-5840-4394-b564-db0d81f10959",
+        "d540db6c-0a3b-42f5-9569-cf80c63532a3",
+        "f40048cf-1929-499c-a499-cfe65f60af25"
+      ],
+      "relevant_ids": [
+        "0e299c93-ff07-448e-a881-9d6f06eeb300"
+      ],
+      "retrieval_time": 0.0019,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What percentage of immigration court completions in FY 2010 were related to detained individuals?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "8db47a3d-2cca-4efc-b08f-1e390c7df3e8",
+        "f476becb-85e5-4566-9d5c-7574fd60fed6",
+        "ed98421d-9e76-45ec-b1fd-11c21cbfa24b",
+        "ee8daaa4-e20a-45de-8dac-6ac2efc8acae",
+        "3815bb0a-bdb8-440a-ab69-461b0fc467ab"
+      ],
+      "relevant_ids": [
+        "f476becb-85e5-4566-9d5c-7574fd60fed6"
+      ],
+      "retrieval_time": 0.0017,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "What is one type of proceeding mentioned in the text?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "e84c2a25-b918-4c7b-b2b8-49dfe0ca5f59",
+        "0f69c156-e8de-482c-8880-aa9c466df2b9",
+        "95e14f0a-c1ba-4f68-8c53-54f2a8a58f40",
+        "5ac7b87c-0de1-414a-9b7e-03ba7291fec2",
+        "9d8cbce5-cadd-48e4-aaf1-d255505424d7"
+      ],
+      "relevant_ids": [
+        "3aeaa40a-2495-41ae-9286-8b3c56c812a9"
+      ],
+      "retrieval_time": 0.0012,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "What is the purpose of Tabs I-L and Tab M in the document?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "2ad24475-8374-4715-b654-f36e58ff1f88",
+        "4c248055-a2e1-4e34-87ae-35d71196f8c0",
+        "bef7bf7a-8bfa-43ac-9eeb-ccdbbe00e162",
+        "9bbf5a19-27fe-4b34-ba8f-8ae0276fecb3",
+        "f010cad9-d84f-4e0d-a07e-b99749d5dd2f"
+      ],
+      "relevant_ids": [
+        "2ad24475-8374-4715-b654-f36e58ff1f88"
+      ],
+      "retrieval_time": 0.0015,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "Under what conditions are applicants for cancellation of removal exempt from the cap?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "cd08a3e4-8d25-4a57-affc-c6af09b6f034",
+        "4e1ad89f-6912-4bc9-be50-c0724350c167",
+        "9ae8d107-3431-4b4b-b8a2-a758501091de",
+        "f7e1bf67-48fb-4345-b604-90ab6cd938e8",
+        "ca29f9e6-b191-457b-b508-3e72ea6e93b6"
+      ],
+      "relevant_ids": [
+        "cd08a3e4-8d25-4a57-affc-c6af09b6f034"
+      ],
+      "retrieval_time": 0.0016,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What sections are referenced in the text?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "a34c5fe2-e7ed-4587-84dc-2e96a271e207",
+        "d94d892a-5d6a-48e2-b688-6ee252ba07c2",
+        "b5729eff-4a25-4d4a-a18c-b33f578ba252",
+        "6ef2f6ee-f688-4be9-8f91-2357eb08fa0c",
+        "0d4edf95-ae74-4b46-a67e-832e3b76fd22"
+      ],
+      "relevant_ids": [
+        "d94d892a-5d6a-48e2-b688-6ee252ba07c2"
+      ],
+      "retrieval_time": 0.0008,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "What does Figure 19-B illustrate on page K5?",
+      "question_type": "conceptual",
+      "retrieved_ids": [
+        "acad7a8b-ae60-493e-a16e-b6129aa7517c",
+        "42c87484-792a-40a4-9a46-f1839cefc7d8",
+        "350fb8fe-817d-45d9-8093-702e66a5d21a",
+        "9d1e2040-4209-410c-896e-32bcebc0c8d0",
+        "40dc4d9e-1281-456a-8523-959feed19083"
+      ],
+      "relevant_ids": [
+        "038c4b2c-a455-463b-b26a-235ac56a8836"
+      ],
+      "retrieval_time": 0.0009,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "What are the different types of facilities where detention can occur?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "e022dc7f-7fa3-457d-9866-5795ca670390",
+        "a34c5fe2-e7ed-4587-84dc-2e96a271e207",
+        "f7e1bf67-48fb-4345-b604-90ab6cd938e8",
+        "671eefc5-94df-40a1-9e5f-1535b6958c2b",
+        "c4082983-4b13-4850-9210-4fe22cea82ee"
+      ],
+      "relevant_ids": [
+        "7325858f-75b0-4520-aeda-08f2d0042bb7"
+      ],
+      "retrieval_time": 0.0013,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "What were the primary responsibilities of the Immigration and Naturalization Service prior to its transition to the Department of Homeland Security?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "d73ee93d-d315-4bd9-9dab-343ce854d0c4",
+        "acfbd354-c883-4ea4-81ad-3abd46501c27",
+        "9cdf7680-c18e-42da-933f-f950bff11cfc",
+        "8618e553-6373-479c-848c-4ebdcb6dee00",
+        "fe7df442-66e1-44f3-a75d-829fa7c7a12e"
+      ],
+      "relevant_ids": [
+        "d73ee93d-d315-4bd9-9dab-343ce854d0c4"
+      ],
+      "retrieval_time": 0.0024,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What new relief was introduced by the Illegal Immigration Reform and Immigrant Responsibility Act of 1996?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "162a9949-8162-4c5d-9ebf-7b51150e1482",
+        "9269baf7-bb03-47dd-9122-20910ec03dd6",
+        "cf790c04-301a-4b6a-96e1-4f37de0e506f",
+        "ffa5f09e-fc45-444c-a2f8-3518c58e9ad3",
+        "7b0cbfc8-0547-4758-a6f3-dffa94414d42"
+      ],
+      "relevant_ids": [
+        "162a9949-8162-4c5d-9ebf-7b51150e1482"
+      ],
+      "retrieval_time": 0.002,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What topic is referenced in the text that relates to legal processes involving the annulment of agreements?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "793cb711-7b47-4597-9d54-8277cd948160",
+        "8fb3aa22-fe62-408d-888f-eaec6251b55b",
+        "be6256fe-fad3-4c46-b400-5fff64675c07",
+        "f3f7e50d-209b-4ede-bc47-c4b35058c8cd",
+        "fd1dd655-b73d-4e45-a6e1-776748135955"
+      ],
+      "relevant_ids": [
+        "dfd98a0b-7a48-414e-8963-8b3cd8f6f3ac"
+      ],
+      "retrieval_time": 0.0018,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    },
+    {
+      "question": "What trend has been observed regarding the age of pending cases?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "c1eb9810-7e62-41ae-b274-901cc7e07fd2",
+        "ccbd7b14-a271-4068-b86f-702eac0f5fea",
+        "7551abba-4e27-431d-ac33-8b407c4e5ff3",
+        "98697a83-7ca0-4acc-8839-ac372e09c7ed",
+        "0b0af13c-19ca-4ae2-82dd-2f0411a11b89"
+      ],
+      "relevant_ids": [
+        "ccbd7b14-a271-4068-b86f-702eac0f5fea"
+      ],
+      "retrieval_time": 0.0012,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "By what percentage did the number of immigration court receipts rise from FY 2006 to FY 2010?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "8db47a3d-2cca-4efc-b08f-1e390c7df3e8",
+        "752886ae-f9d4-4359-9e57-611eb60e8275",
+        "d540db6c-0a3b-42f5-9569-cf80c63532a3",
+        "f92520f9-bdd1-47da-bb09-7988795aff63",
+        "ee8daaa4-e20a-45de-8dac-6ac2efc8acae"
+      ],
+      "relevant_ids": [
+        "3d3cfd0e-f90f-4d9a-8935-83858777ac3e"
+      ],
+      "retrieval_time": 0.002,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.31546487678572877,
+      "rr": 0.125,
+      "ap": 0.125
+    },
+    {
+      "question": "What types of outcomes does EOIR record for asylum cases?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "39d3e031-517e-4a3f-ad07-474fef784882",
+        "acad7a8b-ae60-493e-a16e-b6129aa7517c",
+        "fd1dd655-b73d-4e45-a6e1-776748135955",
+        "8e66dec5-dfd2-4e0a-add0-49392ef26345",
+        "6bec733a-159c-42e3-a226-8cd9ec9ad35c"
+      ],
+      "relevant_ids": [
+        "39d3e031-517e-4a3f-ad07-474fef784882"
+      ],
+      "retrieval_time": 0.0012,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 1.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 1.0,
+      "ndcg@3": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "rr": 1.0,
+      "ap": 1.0
+    },
+    {
+      "question": "What conditions must be met for an immigration judge to change the venue of a proceeding?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "ce8e6c91-6053-4ac5-891b-fd673c0f7e8a",
+        "5ac7b87c-0de1-414a-9b7e-03ba7291fec2",
+        "517b7b30-a73d-49f9-8b63-60fe4a780fb7",
+        "9d8cbce5-cadd-48e4-aaf1-d255505424d7",
+        "f872d5c5-1c77-4c37-bfd0-1bf3a1396d41"
+      ],
+      "relevant_ids": [
+        "5ac7b87c-0de1-414a-9b7e-03ba7291fec2"
+      ],
+      "retrieval_time": 0.0019,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "precision@1": 0.0,
+      "precision@3": 0.3333333333333333,
+      "precision@5": 0.2,
+      "precision@10": 0.1,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.6309297535714575,
+      "ndcg@5": 0.6309297535714575,
+      "ndcg@10": 0.6309297535714575,
+      "rr": 0.5,
+      "ap": 0.5
+    },
+    {
+      "question": "Which nationality had the highest percentage of asylum grants in FY 2010 according to the statistics?",
+      "question_type": "factual",
+      "retrieved_ids": [
+        "56c498fd-6f01-4160-a93d-a595455652ca",
+        "9d1e2040-4209-410c-896e-32bcebc0c8d0",
+        "961d2b55-9688-43be-a8a6-aefcb9c6896c",
+        "3cd63112-6248-4063-b73d-e5cfa66ad4f0",
+        "ee8daaa4-e20a-45de-8dac-6ac2efc8acae"
+      ],
+      "relevant_ids": [
+        "c74fad51-a7bc-4d17-9809-0c5bd92e7638"
+      ],
+      "retrieval_time": 0.0022,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "precision@1": 0.0,
+      "precision@3": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "ndcg@1": 0.0,
+      "ndcg@3": 0.0,
+      "ndcg@5": 0.0,
+      "ndcg@10": 0.0,
+      "rr": 0.0,
+      "ap": 0.0
+    }
+  ]
+}
