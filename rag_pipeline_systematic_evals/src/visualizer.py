@@ -1,13 +1,16 @@
 """
 Visualizer for P3 grid-search results.
 
-Produces 6 charts that cover the spec's required output:
-  1. MRR leaderboard     — all configs ranked by MRR
-  2. Recall@K curves     — K in [1,3,5,10] per retrieval method
-  3. Chunking comparison — grouped bar (chunk strategy × metric)
-  4. Embedding comparison — small vs large across key metrics
+Produces 9 charts covering all spec-required output:
+  1. MRR leaderboard            — all configs ranked by MRR
+  2. Recall@K curves            — K in [1,3,5,10] per retrieval method
+  3. Chunking comparison        — grouped bar (chunk strategy × metric)
+  4. Embedding comparison       — small vs large across key metrics
   5. Retrieval method comparison — vector / BM25 / hybrid
-  6. MRR heatmap         — chunk config × retrieval method
+  6. MRR heatmap                — chunk config × embedding model
+  7. Recall vs Precision scatter — Recall@5 vs Precision@5, top-5 labelled
+  8. Metric correlation matrix  — Pearson r across all IR metrics
+  9. Response time vs quality   — avg latency vs MRR, Pareto front annotated
 
 All charts are saved to `output_dir` as PNG files and returned as
 a dict mapping name → Path so the caller can log or display them.
@@ -56,12 +59,15 @@ def generate_all_charts(
 
     saved: dict[str, Path] = {}
     for name, fn in [
-        ("mrr_leaderboard",      _chart_mrr_leaderboard),
-        ("recall_at_k_curves",   _chart_recall_at_k_curves),
-        ("chunking_comparison",  _chart_chunking_comparison),
-        ("embedding_comparison", _chart_embedding_comparison),
-        ("retrieval_comparison", _chart_retrieval_comparison),
-        ("mrr_heatmap",          _chart_mrr_heatmap),
+        ("mrr_leaderboard",           _chart_mrr_leaderboard),
+        ("recall_at_k_curves",        _chart_recall_at_k_curves),
+        ("chunking_comparison",       _chart_chunking_comparison),
+        ("embedding_comparison",      _chart_embedding_comparison),
+        ("retrieval_comparison",      _chart_retrieval_comparison),
+        ("mrr_heatmap",               _chart_mrr_heatmap),
+        ("recall_precision_scatter",  _chart_recall_precision_scatter),
+        ("metric_correlation",        _chart_metric_correlation),
+        ("response_time_vs_quality",  _chart_response_time_vs_quality),
     ]:
         path = output_dir / f"{name}.png"
         fn(df, path)
@@ -242,23 +248,142 @@ def _chart_retrieval_comparison(df: pd.DataFrame, path: Path) -> None:
 def _chart_mrr_heatmap(df: pd.DataFrame, path: Path) -> None:
     pivot = df.pivot_table(
         index="chunk_label",
-        columns="retrieval_method",
+        columns="embed_label",
         values="mrr",
         aggfunc="mean",
     )
 
-    fig, ax = plt.subplots(figsize=(8, max(4, len(pivot) * 0.9)))
+    fig, ax = plt.subplots(figsize=(7, max(4, len(pivot) * 0.9)))
     sns.heatmap(
         pivot, annot=True, fmt=".3f", cmap="YlOrRd",
         vmin=0, vmax=1, linewidths=0.5, ax=ax,
         cbar_kws={"label": "MRR"},
     )
-    ax.set_title("MRR Heatmap: Chunk Config × Retrieval Method",
+    ax.set_title("MRR Heatmap: Chunk Config × Embedding Model",
                  fontsize=12, fontweight="bold")
-    ax.set_xlabel("Retrieval Method", fontsize=10)
+    ax.set_xlabel("Embedding Model", fontsize=10)
     ax.set_ylabel("Chunk Config", fontsize=10)
     plt.xticks(rotation=15)
     plt.yticks(rotation=0)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# Chart 7: Recall@5 vs Precision@5 scatter
+# ---------------------------------------------------------------------------
+
+def _chart_recall_precision_scatter(df: pd.DataFrame, path: Path) -> None:
+    colors = [_method_color(m) for m in df["retrieval_method"]]
+    top5 = df.nlargest(5, "mrr")
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.scatter(df["recall@5"], df["precision@5"], c=colors, s=80,
+               alpha=0.8, edgecolors="white", linewidths=0.5)
+
+    for _, row in top5.iterrows():
+        label = row["experiment_id"].split("__")[-1]
+        ax.annotate(label, (row["recall@5"], row["precision@5"]),
+                    fontsize=7, textcoords="offset points", xytext=(5, 3))
+
+    ax.set_xlabel("Recall@5", fontsize=11)
+    ax.set_ylabel("Precision@5", fontsize=11)
+    ax.set_title("Recall@5 vs Precision@5 — All Configurations", fontsize=13, fontweight="bold")
+    ax.set_xlim(-0.05, 1.1)
+    ax.set_ylim(-0.01, max(df["precision@5"].max() * 1.3, 0.25))
+
+    method_colors = {m: _method_color(m) for m in df["retrieval_method"].unique()}
+    handles = [plt.Rectangle((0, 0), 1, 1, color=c, label=m) for m, c in method_colors.items()]
+    ax.legend(handles=handles, title="Retrieval", fontsize=9)
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# Chart 8: Metric correlation matrix
+# ---------------------------------------------------------------------------
+
+_CORR_COLS = [
+    "mrr", "map_score",
+    "recall@1", "recall@3", "recall@5", "recall@10",
+    "precision@1", "precision@3", "precision@5", "precision@10",
+    "ndcg@1", "ndcg@3", "ndcg@5", "ndcg@10",
+]
+_CORR_LABELS = [
+    "MRR", "MAP",
+    "R@1", "R@3", "R@5", "R@10",
+    "P@1", "P@3", "P@5", "P@10",
+    "NDCG@1", "NDCG@3", "NDCG@5", "NDCG@10",
+]
+
+
+def _chart_metric_correlation(df: pd.DataFrame, path: Path) -> None:
+    cols = [c for c in _CORR_COLS if c in df.columns]
+    labels = [_CORR_LABELS[_CORR_COLS.index(c)] for c in cols]
+    corr = df[cols].corr()
+    corr.index = labels
+    corr.columns = labels
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(
+        corr, annot=True, fmt=".2f", cmap="coolwarm", center=0,
+        vmin=-1, vmax=1, linewidths=0.5, ax=ax,
+        cbar_kws={"label": "Pearson r"},
+        annot_kws={"size": 7},
+    )
+    ax.set_title("Metric Correlation Matrix", fontsize=13, fontweight="bold")
+    plt.xticks(rotation=45, ha="right", fontsize=8)
+    plt.yticks(rotation=0, fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# Chart 9: Response time vs quality (Pareto front annotated)
+# ---------------------------------------------------------------------------
+
+def _pareto_front(df: pd.DataFrame) -> pd.DataFrame:
+    """Return rows where no other row has lower time AND higher MRR."""
+    mask = []
+    for i, row in df.iterrows():
+        dominated = any(
+            (other["avg_time_s"] <= row["avg_time_s"] and other["mrr"] >= row["mrr"])
+            and (other["avg_time_s"] < row["avg_time_s"] or other["mrr"] > row["mrr"])
+            for j, other in df.iterrows() if i != j
+        )
+        mask.append(not dominated)
+    return df[mask]
+
+
+def _chart_response_time_vs_quality(df: pd.DataFrame, path: Path) -> None:
+    colors = [_method_color(m) for m in df["retrieval_method"]]
+    pareto = _pareto_front(df)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.scatter(df["avg_time_s"] * 1000, df["mrr"], c=colors, s=80,
+               alpha=0.8, edgecolors="white", linewidths=0.5)
+
+    for _, row in pareto.iterrows():
+        label = row["experiment_id"].split("__")[-1]
+        ax.annotate(
+            label, (row["avg_time_s"] * 1000, row["mrr"]),
+            fontsize=7, textcoords="offset points", xytext=(5, 3),
+            color="darkred", fontweight="bold",
+        )
+
+    ax.set_xlabel("Avg Retrieval Time (ms)", fontsize=11)
+    ax.set_ylabel("MRR", fontsize=11)
+    ax.set_title("Response Time vs Quality Trade-off", fontsize=13, fontweight="bold")
+    ax.set_ylim(0, 1.05)
+
+    method_colors = {m: _method_color(m) for m in df["retrieval_method"].unique()}
+    handles = [plt.Rectangle((0, 0), 1, 1, color=c, label=m) for m, c in method_colors.items()]
+    ax.legend(handles=handles, title="Retrieval", fontsize=9)
+    ax.grid(alpha=0.3)
     fig.tight_layout()
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)

@@ -130,6 +130,7 @@ class ExperimentConfig(BaseModel):
     `experiment_id` is derived from the component labels so it is human-readable
     in saved JSON files and Rich table output:
         e.g. "fixed_256_ol50__small__vector"
+        e.g. "fixed_256_ol50__small__vector__reranked"
     """
     chunk:     ChunkConfig
     embed:     EmbedConfig
@@ -138,10 +139,12 @@ class ExperimentConfig(BaseModel):
     # How many synthetic QA pairs to generate per chunking config.
     # The spec requires ≥ 20; default is 25 to have a small buffer.
     qa_pairs_per_config: int = 25
+    use_reranking: bool = False
 
     @property
     def experiment_id(self) -> str:
-        return f"{self.chunk.label()}__{self.embed.label()}__{self.retrieval.label()}"
+        base = f"{self.chunk.label()}__{self.embed.label()}__{self.retrieval.label()}"
+        return f"{base}__reranked" if self.use_reranking else base
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +203,7 @@ def build_experiment_grid(
     embed_configs:     list[EmbedConfig]     | None = None,
     retrieval_configs: list[RetrievalConfig] | None = None,
     qa_pairs_per_config: int = 25,
+    use_reranking: bool = False,
 ) -> list[ExperimentConfig]:
     """
     Produce the full cross-product grid of experiments.
@@ -211,7 +215,11 @@ def build_experiment_grid(
     retrievals = retrieval_configs or default_retrieval_configs()
 
     return [
-        ExperimentConfig(chunk=c, embed=e, retrieval=r, qa_pairs_per_config=qa_pairs_per_config)
+        ExperimentConfig(
+            chunk=c, embed=e, retrieval=r,
+            qa_pairs_per_config=qa_pairs_per_config,
+            use_reranking=use_reranking,
+        )
         for c in chunks
         for e in embeds
         for r in retrievals

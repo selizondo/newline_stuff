@@ -98,9 +98,9 @@ class TestResultsToDataframe:
 # ---------------------------------------------------------------------------
 
 class TestGenerateAllCharts:
-    def test_returns_six_charts(self, tmp_path):
+    def test_returns_nine_charts(self, tmp_path):
         saved = generate_all_charts(_mini_grid(), output_dir=tmp_path)
-        assert len(saved) == 6
+        assert len(saved) == 9
 
     def test_all_files_created(self, tmp_path):
         saved = generate_all_charts(_mini_grid(), output_dir=tmp_path)
@@ -117,12 +117,13 @@ class TestGenerateAllCharts:
         expected = {
             "mrr_leaderboard", "recall_at_k_curves", "chunking_comparison",
             "embedding_comparison", "retrieval_comparison", "mrr_heatmap",
+            "recall_precision_scatter", "metric_correlation", "response_time_vs_quality",
         }
         assert set(saved.keys()) == expected
 
     def test_single_result_does_not_crash(self, tmp_path):
         saved = generate_all_charts([_make_result()], output_dir=tmp_path)
-        assert len(saved) == 6
+        assert len(saved) == 9
 
     def test_output_dir_created_if_missing(self, tmp_path):
         nested = tmp_path / "a" / "b" / "charts"

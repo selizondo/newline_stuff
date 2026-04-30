@@ -39,6 +39,7 @@ from src.embedders import embed_chunks, embed_texts
 from src.evaluator import evaluate
 from src.parsers import parse_pdf
 from src.qa_generator import generate_qa_dataset
+from src.reranker import CrossEncoderReranker, RerankerRetriever
 
 
 # ---------------------------------------------------------------------------
@@ -54,6 +55,7 @@ def run_grid_search(
     embed_configs: list[EmbedConfig] | None = None,
     retrieval_configs: list[RetrievalConfig] | None = None,
     force: bool = False,
+    use_reranking: bool = False,
 ) -> list[EvaluationResult]:
     """
     Run the full evaluation grid against `pdf_path`.
@@ -79,7 +81,9 @@ def run_grid_search(
         embed_configs=embed_configs,
         retrieval_configs=retrieval_configs,
         qa_pairs_per_config=n_pairs,
+        use_reranking=use_reranking,
     )
+    reranker = CrossEncoderReranker() if use_reranking else None
 
     doc = parse_pdf(pdf_path)
     full_text = doc.full_text
@@ -115,6 +119,8 @@ def run_grid_search(
 
         embed_fn = _make_embed_fn(config.embed)
         retriever = _make_retriever(config.retrieval, store, chunks, embed_fn)
+        if reranker is not None:
+            retriever = RerankerRetriever(retriever, reranker)
 
         result = evaluate(dataset, retriever, config)
         _save_result(result, result_path)

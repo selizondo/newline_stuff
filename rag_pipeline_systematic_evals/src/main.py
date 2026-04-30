@@ -58,6 +58,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Skip chart generation")
     parser.add_argument("--top-n",   type=int, default=5,
                         help="Number of top configs shown in summary table")
+    parser.add_argument("--rerank", action="store_true",
+                        help="Apply cross-encoder reranking after retrieval (requires sentence-transformers)")
     return parser.parse_args(argv)
 
 
@@ -166,6 +168,7 @@ def main(argv: list[str] | None = None) -> int:
             qa_dir=args.qa_dir,
             n_pairs=args.n_pairs,
             force=args.force,
+            use_reranking=args.rerank,
         )
         progress.update(task, completed=len(results))
 
