@@ -1,0 +1,16 @@
+# Smoke test: 1 cell (fixed × minilm × dense), 2 PDFs, 3 queries.
+# Fast end-to-end sanity check — not a benchmark.
+
+n_queries: 3
+
+chunking_strategies:
+  - strategy: fixed
+    chunk_size: 512
+    overlap: 64
+
+embedding_models:
+  - model: all-MiniLM-L6-v2
+
+retrieval_methods:
+  - method: dense
+    top_k: 5

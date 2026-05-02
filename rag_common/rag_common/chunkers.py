@@ -12,12 +12,11 @@ each chunker needing to know about it.
 
 Strategies provided here
 ------------------------
-FixedSizeChunker   — character-window split; respects word boundaries
+FixedSizeChunker     — character-window split; respects word boundaries
 SentenceBasedChunker — groups N sentences with sentence-level overlap (NLTK)
-SemanticChunker    — splits at low-similarity sentence boundaries (needs embed_fn)
-
-Project-specific chunkers (RecursiveChunker, SlidingWindowChunker) live in
-each project's own chunkers_ext.py and follow the same interface.
+SemanticChunker      — splits at low-similarity sentence boundaries (needs embed_fn)
+RecursiveChunker     — hierarchical separator splitting (paragraph → sentence → word)
+SlidingWindowChunker — sentence-window with configurable step (high-recall variant)
 """
 
 from __future__ import annotations
@@ -253,5 +252,151 @@ class SemanticChunker:
                         **metadata,
                     },
                 ))
+
+        return chunks
+
+
+# ---------------------------------------------------------------------------
+# RecursiveChunker
+# ---------------------------------------------------------------------------
+
+class RecursiveChunker:
+    """
+    Splits text by a hierarchy of separators until all pieces fit within
+    `chunk_size` characters, then merges small pieces with `overlap`.
+
+    Separator order: paragraph breaks → line breaks → sentence ends → spaces.
+    This preserves document structure better than fixed-size splitting because
+    it never cuts inside a paragraph when a paragraph boundary is available.
+
+    Args:
+        chunk_size:  target character length per chunk
+        overlap:     character overlap between consecutive chunks
+        separators:  override the default separator hierarchy
+    """
+
+    _DEFAULT_SEPARATORS = ["\n\n", "\n", ". ", " "]
+
+    def __init__(
+        self,
+        chunk_size: int = 512,
+        overlap: int = 100,
+        separators: list[str] | None = None,
+    ) -> None:
+        if overlap >= chunk_size:
+            raise ValueError("overlap must be less than chunk_size")
+        self.chunk_size = chunk_size
+        self.overlap = overlap
+        self.separators = separators or self._DEFAULT_SEPARATORS
+
+    def chunk(self, text: str, metadata: dict | None = None) -> list[Chunk]:
+        metadata = metadata or {}
+        pieces = self._split(text.strip(), self.separators)
+        merged = self._merge(pieces)
+        return [
+            Chunk(
+                content=c,
+                chunk_index=i,
+                method="recursive",
+                metadata={"chunk_size": self.chunk_size, "overlap": self.overlap, **metadata},
+            )
+            for i, c in enumerate(merged)
+            if c.strip()
+        ]
+
+    def _split(self, text: str, separators: list[str]) -> list[str]:
+        """Recursively split until every piece fits within chunk_size."""
+        if len(text) <= self.chunk_size or not separators:
+            return [text]
+
+        sep, rest = separators[0], separators[1:]
+        parts = [p for p in text.split(sep) if p.strip()]
+
+        result: list[str] = []
+        for part in parts:
+            if len(part) <= self.chunk_size:
+                result.append(part)
+            else:
+                result.extend(self._split(part, rest))
+        return result
+
+    def _merge(self, pieces: list[str]) -> list[str]:
+        """Greedily merge short pieces into chunks up to chunk_size with overlap."""
+        chunks: list[str] = []
+        window: list[str] = []
+        window_len = 0
+
+        for piece in pieces:
+            piece_len = len(piece)
+            if window and window_len + piece_len + 1 > self.chunk_size:
+                chunks.append(" ".join(window))
+                carry: list[str] = []
+                carry_len = 0
+                for p in reversed(window):
+                    if carry_len + len(p) <= self.overlap:
+                        carry.insert(0, p)
+                        carry_len += len(p)
+                    else:
+                        break
+                window = carry
+                window_len = carry_len
+
+            window.append(piece)
+            window_len += piece_len + 1
+
+        if window:
+            chunks.append(" ".join(window))
+        return chunks
+
+
+# ---------------------------------------------------------------------------
+# SlidingWindowChunker
+# ---------------------------------------------------------------------------
+
+class SlidingWindowChunker:
+    """
+    Sliding window over sentences with configurable window size and step.
+
+    Each chunk contains `window_size` consecutive sentences. The window
+    advances by `step` sentences, so `window_size - step` sentences overlap
+    between consecutive chunks. High overlap (step=1) maximises recall at
+    the cost of index size; lower overlap is faster to index.
+
+    Args:
+        window_size: sentences per chunk
+        step:        sentences to advance per step; must be ≥ 1
+    """
+
+    def __init__(self, window_size: int = 10, step: int = 5) -> None:
+        if step < 1:
+            raise ValueError("step must be >= 1")
+        if step > window_size:
+            raise ValueError("step must be <= window_size")
+        self.window_size = window_size
+        self.step = step
+
+    def chunk(self, text: str, metadata: dict | None = None) -> list[Chunk]:
+        metadata = metadata or {}
+        sentences = _split_sentences(text)
+        chunks: list[Chunk] = []
+        idx = 0
+
+        for pos in range(0, max(1, len(sentences) - self.window_size + 1), self.step):
+            window = sentences[pos : pos + self.window_size]
+            content = " ".join(window).strip()
+            if content:
+                chunks.append(Chunk(
+                    content=content,
+                    chunk_index=idx,
+                    method="sliding_window",
+                    metadata={
+                        "window_size": self.window_size,
+                        "step": self.step,
+                        "sentence_start": pos,
+                        "sentence_end": pos + len(window),
+                        **metadata,
+                    },
+                ))
+                idx += 1
 
         return chunks

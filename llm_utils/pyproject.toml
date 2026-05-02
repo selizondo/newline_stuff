@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-utils"
+version = "0.1.0"
+description = "Shared LLM client utilities — config, client caching, and rate-limit backoff"
+requires-python = ">=3.12"
+dependencies = [
+    "openai>=1.0",
+    "instructor>=1.0",
+    "python-dotenv>=1.0",
+]

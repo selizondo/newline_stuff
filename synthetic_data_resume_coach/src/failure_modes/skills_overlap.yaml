@@ -1,0 +1,13 @@
+name: skills_overlap
+label: "Skills Overlap (Jaccard Similarity)"
+description: >-
+  Measures the fraction of required job skills present in the resume using
+  Jaccard similarity: |resume_skills ∩ job_skills| / |resume_skills ∪ job_skills|.
+  Skills are normalized (lowercase, version numbers removed, common suffixes stripped)
+  before comparison.
+threshold: 0.5
+flag_if: below_threshold
+hint: >-
+  Normalize skills before comparison: lowercase, strip version numbers (e.g. "Python 3.10"
+  → "Python"), strip suffixes (.js, developer, engineer, programming).
+  A score below 0.5 indicates the resume lacks more than half the required skills.

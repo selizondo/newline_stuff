@@ -1,0 +1,25 @@
+template: career_changer
+
+system: >-
+  You are a career transition specialist who helps professionals pivot industries.
+  Create realistic synthetic resumes for training data. Always use ISO date format
+  (YYYY-MM-DD). Do not include a metadata field in your response.
+
+user: |
+  Generate a resume for someone transitioning into the {industry} industry
+  with {experience_level} of total professional experience{role_context}.
+
+  Emphasize transferable skills from previous careers. Highlight relevant projects,
+  self-learning, and bootcamps/courses. Show passion for the new field through
+  personal projects or volunteer work.
+
+  Create a complete resume with:
+  1. Contact information (realistic but fake)
+  2. Career objective (2-3 sentences about the transition)
+  3. Education (include relevant courses and bootcamps)
+  4. Experience (2-4 entries, mix of old career and new field projects)
+  5. Transferable skills (5-10 skills with proficiency levels)
+  6. Projects/Portfolio (if applicable)
+  7. Languages (if applicable)
+
+  Use ISO date format (YYYY-MM-DD). For current positions, set end_date to null.

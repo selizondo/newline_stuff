@@ -1,0 +1,13 @@
+name: seniority_mismatch
+label: "Seniority Level Mismatch"
+description: >-
+  Flags when the candidate's inferred seniority level differs from the job's
+  required level by more than 1 step. Levels: Entry/Junior=0, Mid/Intermediate=1,
+  Senior=2, Lead/Principal=3, Executive/Director/VP=4.
+  Seniority is inferred from the most recent job title keywords.
+threshold: 1
+flag_if: absolute_level_difference_above_threshold
+hint: >-
+  Map title keywords to levels: (entry, junior) → 0, (mid, intermediate) → 1,
+  (senior) → 2, (lead, principal, staff) → 3, (executive, director, vp, c-level) → 4.
+  If |resume_level - job_level| > threshold, flag it.

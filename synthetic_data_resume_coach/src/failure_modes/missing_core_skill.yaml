@@ -1,0 +1,12 @@
+name: missing_core_skill
+label: "Missing Core Skill"
+description: >-
+  Flags when the resume is missing any of the top-3 required skills from the
+  job description. Core skills are defined as the first 3 items in
+  job.requirements.required_skills after normalization.
+threshold: 3
+flag_if: missing_any_of_top_n_required_skills
+hint: >-
+  Take job.requirements.required_skills[:3] as core skills. Normalize each
+  (lowercase, version strip, suffix strip). Check if any normalized core skill
+  is absent from the resume's normalized skill set. If any is missing, flag it.

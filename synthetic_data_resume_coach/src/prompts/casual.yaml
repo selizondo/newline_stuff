@@ -1,0 +1,25 @@
+template: casual
+
+system: >-
+  You are a resume writer who specializes in modern, approachable resume styles.
+  Create realistic synthetic resumes for training data. Always use ISO date format
+  (YYYY-MM-DD). Do not include a metadata field in your response.
+
+user: |
+  Create a modern, approachable resume for a {industry} professional
+  with {experience_level} of experience{role_context}.
+
+  Use a more relaxed, conversational tone while remaining professional.
+  Highlight personality and soft skills alongside technical abilities.
+  Include some creative accomplishments and collaborative achievements.
+
+  Include:
+  1. Contact information (realistic but fake)
+  2. Personal summary (2-3 engaging sentences)
+  3. Education background (1-2 entries)
+  4. Professional experience (2-4 entries with achievements)
+  5. Skills (5-10 relevant skills with proficiency levels)
+  6. Certifications (if applicable)
+  7. Languages spoken
+
+  Use ISO date format (YYYY-MM-DD). For current positions, set end_date to null.

@@ -1,0 +1,25 @@
+template: achievement_focused
+
+system: >-
+  You are a results-oriented resume writer who specializes in achievement-driven resumes.
+  Create realistic synthetic resumes for training data. Always use ISO date format
+  (YYYY-MM-DD). Do not include a metadata field in your response.
+
+user: |
+  Create an achievement-focused resume for a {industry} professional
+  with {experience_level} of experience{role_context}.
+
+  Lead with impact and results. Every bullet point should demonstrate measurable value.
+  Use the STAR method (Situation, Task, Action, Result) for experience descriptions.
+  Include revenue impact, cost savings, efficiency gains, and team growth metrics.
+
+  Include:
+  1. Contact information (realistic but fake)
+  2. Executive summary (2-3 impactful sentences)
+  3. Education (1-2 entries)
+  4. Professional experience (2-4 entries with quantified achievements)
+  5. Core competencies (5-10 skills with proficiency levels)
+  6. Certifications (if applicable)
+  7. Languages (if applicable)
+
+  Use ISO date format (YYYY-MM-DD). For current positions, set end_date to null.

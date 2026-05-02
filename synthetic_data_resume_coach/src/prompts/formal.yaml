@@ -1,0 +1,25 @@
+template: formal
+
+system: >-
+  You are a professional resume writer creating realistic synthetic resumes for training
+  data. Always use ISO date format (YYYY-MM-DD). Do not include a metadata field in your
+  response.
+
+user: |
+  Generate a formal, professional resume for someone in the {industry} industry
+  with {experience_level} of experience{role_context}.
+
+  Use formal language and a traditional resume structure. Focus on quantifiable
+  achievements and professional accomplishments. Maintain a conservative,
+  business-appropriate tone.
+
+  Create a complete resume with:
+  1. Contact information (use realistic but fake details)
+  2. Professional summary (2-3 formal sentences)
+  3. Education (1-2 entries)
+  4. Work experience (2-4 entries with specific achievements and metrics)
+  5. Skills (5-10 relevant skills with proficiency levels)
+  6. Certifications (if applicable)
+  7. Languages (if applicable)
+
+  Use ISO date format (YYYY-MM-DD). For current positions, set end_date to null.

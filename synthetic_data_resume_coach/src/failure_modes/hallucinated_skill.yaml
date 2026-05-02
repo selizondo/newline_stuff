@@ -1,0 +1,16 @@
+name: hallucinated_skill
+label: "Hallucinated Skill Claim"
+description: >-
+  Flags unrealistic skill claims that suggest LLM hallucination. Checks three patterns:
+  (1) Entry-level resume (≤2 years experience) claiming Expert proficiency in 10+ skills.
+  (2) Any resume claiming Expert proficiency in 20+ skills total.
+  (3) Explicit hallucination phrases in summary or skill names.
+thresholds:
+  expert_skills_entry_level: 10
+  expert_skills_any_level: 20
+flag_if: any_threshold_exceeded
+hint: >-
+  Count skills where proficiency_level == "Expert". If the resume has ≤2 years total
+  experience and expert_count >= 10, flag it. If expert_count >= 20 regardless of
+  experience, flag it. Also scan summary and skill names for phrases like
+  "expert in all", "certified in everything", "mastered every".

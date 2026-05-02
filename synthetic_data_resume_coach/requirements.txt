@@ -1,0 +1,26 @@
+# Core dependencies
+pydantic[email]>=2.0
+instructor>=1.0
+groq>=0.4
+pandas>=2.0
+matplotlib>=3.7
+seaborn>=0.12
+braintrust>=0.1
+logfire>=0.1
+python-dotenv>=1.0
+
+# API
+fastapi>=0.110
+uvicorn>=0.29
+
+# Testing
+pytest>=7.0
+pytest-asyncio>=0.23
+httpx>=0.27
+
+# Development
+pre-commit>=3.7
+black>=24.4
+ruff>=0.4
+mypy>=1.10
+types-requests>=2.31

@@ -1,0 +1,26 @@
+# Baseline experiment grid: 3 chunking × 2 embedding × 2 retrieval = 12 configs
+# Use 50 queries from qrels.json for evaluation.
+
+n_queries: 50
+
+chunking_strategies:
+  - strategy: fixed
+    chunk_size: 512
+    overlap: 64
+  - strategy: recursive
+    chunk_size: 512
+    overlap: 100
+  - strategy: sliding_window
+    window_size: 10
+    step: 5
+
+embedding_models:
+  - model: all-MiniLM-L6-v2
+  - model: all-mpnet-base-v2
+
+retrieval_methods:
+  - method: dense
+    top_k: 5
+  - method: hybrid
+    top_k: 5
+    alpha: 0.6

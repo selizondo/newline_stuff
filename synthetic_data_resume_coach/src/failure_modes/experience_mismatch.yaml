@@ -1,0 +1,12 @@
+name: experience_mismatch
+label: "Experience Mismatch"
+description: >-
+  Flags when the candidate's total years of experience is less than 50% of the
+  job's required years. Total experience is calculated by summing all work entry
+  durations; current roles use today as the end date.
+threshold: 0.5
+flag_if: resume_years_below_fraction_of_required
+hint: >-
+  Sum all experience entry durations (end_date - start_date). Use today for current
+  roles (end_date is null). If total_years < required_years * threshold, flag it.
+  A gap of more than half the required experience is considered a mismatch.

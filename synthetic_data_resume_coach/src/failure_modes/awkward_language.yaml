@@ -1,0 +1,29 @@
+name: awkward_language
+label: "Awkward Language / Buzzword Overload"
+description: >-
+  Flags resumes with excessive corporate jargon, repetitive phrasing, or
+  AI-generated language patterns. Checks: (1) More than 5 distinct buzzwords in
+  the summary. (2) The same word appearing 3+ times in close proximity.
+  (3) Known AI-pattern phrases (e.g. "synergy", "move the needle", "circle back").
+threshold: 5
+flag_if: buzzword_count_above_threshold_or_pattern_match
+buzzwords:
+  - synergy
+  - leverage
+  - utilize
+  - paradigm
+  - proactive
+  - thinking outside the box
+  - move the needle
+  - low-hanging fruit
+  - circle back
+  - deep dive
+  - best-in-class
+  - value-add
+  - game-changer
+  - ecosystem
+  - holistic
+hint: >-
+  Count distinct buzzword hits in resume.summary. If count > threshold, flag it.
+  Also run regex patterns for triple-word repetition and multi-punctuation.
+  Flag on any match regardless of count.

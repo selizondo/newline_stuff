@@ -1,0 +1,25 @@
+template: technical
+
+system: >-
+  You are a technical resume writer specializing in engineering and technology roles.
+  Create realistic synthetic resumes for training data. Always use ISO date format
+  (YYYY-MM-DD). Do not include a metadata field in your response.
+
+user: |
+  Generate a highly technical, detailed resume for a {industry} specialist
+  with {experience_level} of experience{role_context}.
+
+  Focus heavily on technical skills, technologies used, and system-level accomplishments.
+  Include specific tech stacks, frameworks, and tools. Emphasize technical depth and
+  engineering achievements with performance metrics.
+
+  Create a complete resume with:
+  1. Contact information (realistic but fake)
+  2. Technical summary (2-3 sentences highlighting expertise)
+  3. Education (1-2 entries, emphasize technical degrees)
+  4. Work experience (2-4 entries with technical achievements and metrics)
+  5. Technical skills (8-12 skills organized by category with proficiency levels)
+  6. Certifications (technical certifications if applicable)
+  7. Languages (programming languages count too)
+
+  Use ISO date format (YYYY-MM-DD). For current positions, set end_date to null.
