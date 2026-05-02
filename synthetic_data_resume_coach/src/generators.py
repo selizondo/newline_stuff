@@ -383,9 +383,9 @@ class JobDescriptionGenerator:
                 pairs.append(pair)
                 logfire.info(f"Generated resume {i + 1}/{resumes_per_job} for job",
                              job_trace_id=job_trace_id, fit_level=fit_level.value)
-            except RateLimitError:
-                raise
             except Exception as e:
+                if isinstance(e, RateLimitError) or "429" in str(e):
+                    raise
                 logfire.error(f"Failed to generate resume {i + 1} for job",
                               error=str(e), job_trace_id=job_trace_id)
         return pairs

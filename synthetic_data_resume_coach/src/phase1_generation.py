@@ -128,14 +128,15 @@ def run_generation_phase(
                 jobs.append(job)
                 _append_jsonl(jobs_file, job)
                 print(f"  [{i+1}/{num_jobs}] {job.title} @ {job.company.name}... OK")
-            except RateLimitError as e:
-                consecutive_rl += 1
-                print(f"  [{i+1}/{num_jobs}] rate limit ({consecutive_rl}/{_CIRCUIT_BREAKER_THRESHOLD}): {e!s:.60}")
-                if consecutive_rl >= _CIRCUIT_BREAKER_THRESHOLD:
-                    print(f"  Circuit breaker tripped — resume with --resume {run_label}")
-                    break
             except Exception as e:
-                print(f"  [{i+1}/{num_jobs}] generation failed: {e!s:.80}")
+                if isinstance(e, RateLimitError) or "429" in str(e):
+                    consecutive_rl += 1
+                    print(f"  [{i+1}/{num_jobs}] rate limit ({consecutive_rl}/{_CIRCUIT_BREAKER_THRESHOLD}): {e!s:.60}")
+                    if consecutive_rl >= _CIRCUIT_BREAKER_THRESHOLD:
+                        print(f"  Circuit breaker tripped — resume with --resume {run_label}")
+                        break
+                else:
+                    print(f"  [{i+1}/{num_jobs}] generation failed: {e!s:.80}")
     else:
         print(f"  Jobs: {len(jobs)}/{num_jobs} already complete — skipping job generation")
 
@@ -191,14 +192,15 @@ def run_generation_phase(
             )
             print(f"  [{i+1}/{len(jobs)}] {job.title} → "
                   f"{already_done + len(new_pairs)} resumes [{fit_summary}]")
-        except RateLimitError as e:
-            consecutive_rl += 1
-            print(f"  [{i+1}/{len(jobs)}] rate limit ({consecutive_rl}/{_CIRCUIT_BREAKER_THRESHOLD}): {e!s:.60}")
-            if consecutive_rl >= _CIRCUIT_BREAKER_THRESHOLD:
-                print(f"  Circuit breaker tripped — resume with --resume {run_label}")
-                break
         except Exception as e:
-            print(f"  [{i+1}/{len(jobs)}] resume generation failed: {e!s:.80}")
+            if isinstance(e, RateLimitError) or "429" in str(e):
+                consecutive_rl += 1
+                print(f"  [{i+1}/{len(jobs)}] rate limit ({consecutive_rl}/{_CIRCUIT_BREAKER_THRESHOLD}): {e!s:.60}")
+                if consecutive_rl >= _CIRCUIT_BREAKER_THRESHOLD:
+                    print(f"  Circuit breaker tripped — resume with --resume {run_label}")
+                    break
+            else:
+                print(f"  [{i+1}/{len(jobs)}] resume generation failed: {e!s:.80}")
 
     resumes: list[Resume] = [p.resume for p in all_pairs]
     print(f"\n  Phase 1 complete: {len(jobs)} jobs, {len(all_pairs)} pairs generated")

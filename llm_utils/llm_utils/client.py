@@ -8,13 +8,18 @@ Two independent cached clients:
   generation client  — LLM_BASE_URL / LLM_API_KEY
   judge client       — LLM_JUDGE_BASE_URL / LLM_JUDGE_API_KEY
 
-Rate-limit backoff handles both raw RateLimitError and instructor-wrapped
-InstructorRetryException that embed a 429 in their message.
+Rate-limit backoff parses the provider-supplied retry-after header.
+Daily quota exhaustion raises RuntimeError immediately rather than sleeping.
+
+Observability hook: pass obs_fn to instructor_complete / judge_binary /
+judge_batch. The hook is called with keyword args on both success and error:
+  obs_fn(model, input_messages, output, duration_ms, error, extra_attributes)
+output is the raw result object on success, None on error.
 """
 
 import re
 import time
-from typing import TypeVar, Type
+from typing import Callable, TypeVar, Type
 
 import instructor
 from instructor.exceptions import InstructorRetryException
@@ -44,6 +49,19 @@ DEFAULT_RETRY_WAIT: float = 60.0      # fallback wait when provider gives no ret
 TPD_THRESHOLD: float = 300.0          # retry-after above this = daily limit; raise immediately
 INSTRUCTOR_INTERNAL_RETRIES: int = 3  # instructor-level validation retries
 
+# ── Judge system prompts ───────────────────────────────────────────────────────
+
+JUDGE_SYSTEM = (
+    "You are a quality evaluator. "
+    "Respond with exactly one digit: 0 or 1."
+)
+
+JUDGE_BATCH_SYSTEM = (
+    "You are a quality evaluator. "
+    "For each criterion, score 1 (pass/present) or 0 (fail/absent). "
+    "Return a JSON object with the exact keys specified."
+)
+
 
 def _parse_retry_after(exc: Exception) -> float:
     """Extract the provider-suggested retry-after from a 429 error message.
@@ -56,12 +74,10 @@ def _parse_retry_after(exc: Exception) -> float:
     Raises immediately if the resolved wait exceeds TPD_THRESHOLD.
     """
     msg = str(exc)
-    # Minutes + seconds: e.g. "1m21.907199999s"
     m = re.search(r"(?:try again in|retry after)\s*(\d+)m([\d.]+)s", msg, re.IGNORECASE)
     if m:
         wait = int(m.group(1)) * 60 + float(m.group(2))
     else:
-        # Plain seconds: e.g. "15.03s"
         m = re.search(r"(?:try again in|retry after)\s*([\d.]+)s", msg, re.IGNORECASE)
         wait = float(m.group(1)) if m else DEFAULT_RETRY_WAIT
 
@@ -139,6 +155,18 @@ def _is_rate_limit(exc: Exception) -> bool:
     return isinstance(exc, RateLimitError) or "429" in str(exc)
 
 
+def _call_obs(obs_fn, *, model, input_messages, output, duration_ms, error=None, extra_attributes=None):
+    if obs_fn is not None:
+        obs_fn(
+            model=model,
+            input_messages=input_messages,
+            output=output,
+            duration_ms=duration_ms,
+            error=error,
+            extra_attributes=extra_attributes or {},
+        )
+
+
 # ── Public call functions ──────────────────────────────────────────────────────
 
 def instructor_complete(
@@ -148,13 +176,16 @@ def instructor_complete(
     temperature: float = DEFAULT_TEMPERATURE,
     max_tokens: int = DEFAULT_MAX_TOKENS,
     max_retries: int = DEFAULT_MAX_RETRIES,
+    obs_fn: Callable | None = None,
 ) -> T:
     """Generate a structured Pydantic object via the generation LLM.
 
     Retries on 429 using the provider-supplied retry-after time.
     Raises RuntimeError immediately if the provider signals a daily quota exhaustion.
+    obs_fn is called with keyword args on success and on non-rate-limit error.
     """
     client = get_instructor_client()
+    _t0 = time.monotonic()
     for attempt in range(max_retries + 1):
         try:
             result = client.chat.completions.create(
@@ -165,10 +196,15 @@ def instructor_complete(
                 max_tokens=max_tokens,
                 max_retries=INSTRUCTOR_INTERNAL_RETRIES,
             )
+            _call_obs(obs_fn, model=model, input_messages=messages, output=result,
+                      duration_ms=(time.monotonic() - _t0) * 1000)
             time.sleep(_gen_delay())
             return result
         except InstructorRetryException as exc:
             if not _is_rate_limit(exc):
+                _call_obs(obs_fn, model=model, input_messages=messages, output=None,
+                          duration_ms=(time.monotonic() - _t0) * 1000, error=exc,
+                          extra_attributes={"validation_attempts": getattr(exc, "n_attempts", None)})
                 raise
             wait = _parse_retry_after(exc)
             if attempt == max_retries:
@@ -216,22 +252,11 @@ def chat_complete(
             time.sleep(wait)
 
 
-_JUDGE_SYSTEM = (
-    "You are a quality evaluator. "
-    "Respond with exactly one digit: 0 or 1."
-)
-
-_JUDGE_BATCH_SYSTEM = (
-    "You are a quality evaluator. "
-    "For each criterion, score 1 (pass/present) or 0 (fail/absent). "
-    "Return a JSON object with the exact keys specified."
-)
-
-
 def judge_binary(
     prompt: str,
     model: str,
     default_on_error: int = 0,
+    obs_fn: Callable | None = None,
 ) -> int:
     """Call the judge endpoint and return 0 or 1.
 
@@ -239,14 +264,20 @@ def judge_binary(
     default_on_error=1 → conservative (unknown → assume failure present).
     """
     messages = [
-        {"role": "system", "content": _JUDGE_SYSTEM},
+        {"role": "system", "content": JUDGE_SYSTEM},
         {"role": "user", "content": prompt},
     ]
+    _t0 = time.monotonic()
     try:
         raw = chat_complete(messages, model=model, temperature=0.1, max_tokens=10, use_judge_client=True)
         digit = raw.strip()[0] if raw.strip() else ""
-        return int(digit) if digit in ("0", "1") else default_on_error
-    except Exception:
+        result = int(digit) if digit in ("0", "1") else default_on_error
+        _call_obs(obs_fn, model=model, input_messages=messages, output=str(result),
+                  duration_ms=(time.monotonic() - _t0) * 1000)
+        return result
+    except Exception as exc:
+        _call_obs(obs_fn, model=model, input_messages=messages, output=None,
+                  duration_ms=(time.monotonic() - _t0) * 1000, error=exc)
         return default_on_error
 
 
@@ -255,6 +286,7 @@ def judge_batch(
     response_model: Type[T],
     model: str,
     max_retries: int = DEFAULT_MAX_RETRIES,
+    obs_fn: Callable | None = None,
 ) -> T:
     """Call the judge endpoint with instructor to score all criteria in one call.
 
@@ -263,9 +295,10 @@ def judge_batch(
     """
     client = get_judge_instructor_client()
     messages = [
-        {"role": "system", "content": _JUDGE_BATCH_SYSTEM},
+        {"role": "system", "content": JUDGE_BATCH_SYSTEM},
         {"role": "user", "content": prompt},
     ]
+    _t0 = time.monotonic()
     for attempt in range(max_retries + 1):
         try:
             result = client.chat.completions.create(
@@ -276,10 +309,14 @@ def judge_batch(
                 max_tokens=500,
                 max_retries=INSTRUCTOR_INTERNAL_RETRIES,
             )
+            _call_obs(obs_fn, model=model, input_messages=messages, output=result,
+                      duration_ms=(time.monotonic() - _t0) * 1000)
             time.sleep(_judge_delay())
             return result
         except InstructorRetryException as exc:
             if not _is_rate_limit(exc):
+                _call_obs(obs_fn, model=model, input_messages=messages, output=None,
+                          duration_ms=(time.monotonic() - _t0) * 1000, error=exc)
                 raise
             wait = _parse_retry_after(exc)
             if attempt == max_retries:
