@@ -12,6 +12,7 @@ Rate-limit backoff handles both raw RateLimitError and instructor-wrapped
 InstructorRetryException that embed a 429 in their message.
 """
 
+import re
 import time
 from typing import TypeVar, Type
 
@@ -39,10 +40,37 @@ _judge_rate_limit_delay: float | None = None
 DEFAULT_TEMPERATURE: float = 0.7
 DEFAULT_MAX_TOKENS: int = 1500
 DEFAULT_MAX_RETRIES: int = 3
-DEFAULT_BACKOFF_DELAY: float = 4.0
-BACKOFF_MULTIPLIER: float = 2.0
-INTER_CYCLE_SLEEP: float = 240.0      # sleep after exhausting retries before re-raising
+DEFAULT_RETRY_WAIT: float = 60.0      # fallback wait when provider gives no retry-after
+TPD_THRESHOLD: float = 300.0          # retry-after above this = daily limit; raise immediately
 INSTRUCTOR_INTERNAL_RETRIES: int = 3  # instructor-level validation retries
+
+
+def _parse_retry_after(exc: Exception) -> float:
+    """Extract the provider-suggested retry-after from a 429 error message.
+
+    Handles two formats:
+      - Plain seconds: 'try again in 15.03s'  (Groq TPM, OpenAI)
+      - Minutes+seconds: 'try again in 1m21.9s'  (Groq TPD rolling window)
+
+    Returns DEFAULT_RETRY_WAIT if no match.
+    Raises immediately if the resolved wait exceeds TPD_THRESHOLD.
+    """
+    msg = str(exc)
+    # Minutes + seconds: e.g. "1m21.907199999s"
+    m = re.search(r"(?:try again in|retry after)\s*(\d+)m([\d.]+)s", msg, re.IGNORECASE)
+    if m:
+        wait = int(m.group(1)) * 60 + float(m.group(2))
+    else:
+        # Plain seconds: e.g. "15.03s"
+        m = re.search(r"(?:try again in|retry after)\s*([\d.]+)s", msg, re.IGNORECASE)
+        wait = float(m.group(1)) if m else DEFAULT_RETRY_WAIT
+
+    if wait > TPD_THRESHOLD:
+        raise RuntimeError(
+            f"Daily token quota exhausted — provider requests {wait:.0f}s wait. "
+            "Retry after UTC midnight or switch to a different model/key."
+        ) from exc
+    return wait
 
 
 def _instructor_mode(base_url: str) -> instructor.Mode:
@@ -123,11 +151,10 @@ def instructor_complete(
 ) -> T:
     """Generate a structured Pydantic object via the generation LLM.
 
-    Retries on 429 with exponential backoff. Sleeps rate_limit_delay after
-    each successful call to stay within provider limits.
+    Retries on 429 using the provider-supplied retry-after time.
+    Raises RuntimeError immediately if the provider signals a daily quota exhaustion.
     """
     client = get_instructor_client()
-    delay = DEFAULT_BACKOFF_DELAY
     for attempt in range(max_retries + 1):
         try:
             result = client.chat.completions.create(
@@ -141,24 +168,19 @@ def instructor_complete(
             time.sleep(_gen_delay())
             return result
         except InstructorRetryException as exc:
-            if _is_rate_limit(exc):
-                if attempt == max_retries:
-                    print(f"\n  [rate limit] retries exhausted — sleeping {INTER_CYCLE_SLEEP:.0f}s", flush=True)
-                    time.sleep(INTER_CYCLE_SLEEP)
-                    raise
-                print(f"\n  [rate limit] waiting {delay:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
-                time.sleep(delay)
-                delay *= BACKOFF_MULTIPLIER
-                continue
-            raise
-        except RateLimitError:
-            if attempt == max_retries:
-                print(f"\n  [rate limit] retries exhausted — sleeping {INTER_CYCLE_SLEEP:.0f}s", flush=True)
-                time.sleep(INTER_CYCLE_SLEEP)
+            if not _is_rate_limit(exc):
                 raise
-            print(f"\n  [rate limit] waiting {delay:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
-            time.sleep(delay)
-            delay *= BACKOFF_MULTIPLIER
+            wait = _parse_retry_after(exc)
+            if attempt == max_retries:
+                raise
+            print(f"\n  [rate limit] waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
+            time.sleep(wait)
+        except RateLimitError as exc:
+            wait = _parse_retry_after(exc)
+            if attempt == max_retries:
+                raise
+            print(f"\n  [rate limit] waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
+            time.sleep(wait)
 
 
 def chat_complete(
@@ -172,10 +194,10 @@ def chat_complete(
     """Send a chat completion request and return the assistant message content.
 
     Set use_judge_client=True to route through the judge endpoint.
+    Retries on 429 using the provider-supplied retry-after time.
     """
     client = get_judge_client() if use_judge_client else get_client()
     rate_delay = _judge_delay() if use_judge_client else _gen_delay()
-    delay = DEFAULT_BACKOFF_DELAY
     for attempt in range(max_retries + 1):
         try:
             response = client.chat.completions.create(
@@ -186,14 +208,12 @@ def chat_complete(
             )
             time.sleep(rate_delay)
             return response.choices[0].message.content or ""
-        except RateLimitError:
+        except RateLimitError as exc:
+            wait = _parse_retry_after(exc)
             if attempt == max_retries:
-                print(f"\n  [rate limit] retries exhausted — sleeping {INTER_CYCLE_SLEEP:.0f}s", flush=True)
-                time.sleep(INTER_CYCLE_SLEEP)
                 raise
-            print(f"\n  [rate limit] waiting {delay:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
-            time.sleep(delay)
-            delay *= BACKOFF_MULTIPLIER
+            print(f"\n  [rate limit] waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
+            time.sleep(wait)
 
 
 _JUDGE_SYSTEM = (
@@ -246,7 +266,6 @@ def judge_batch(
         {"role": "system", "content": _JUDGE_BATCH_SYSTEM},
         {"role": "user", "content": prompt},
     ]
-    delay = DEFAULT_BACKOFF_DELAY
     for attempt in range(max_retries + 1):
         try:
             result = client.chat.completions.create(
@@ -260,21 +279,16 @@ def judge_batch(
             time.sleep(_judge_delay())
             return result
         except InstructorRetryException as exc:
-            if _is_rate_limit(exc):
-                if attempt == max_retries:
-                    print(f"\n  [rate limit] retries exhausted — sleeping {INTER_CYCLE_SLEEP:.0f}s", flush=True)
-                    time.sleep(INTER_CYCLE_SLEEP)
-                    raise
-                print(f"\n  [rate limit] waiting {delay:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
-                time.sleep(delay)
-                delay *= BACKOFF_MULTIPLIER
-                continue
-            raise
-        except RateLimitError:
-            if attempt == max_retries:
-                print(f"\n  [rate limit] retries exhausted — sleeping {INTER_CYCLE_SLEEP:.0f}s", flush=True)
-                time.sleep(INTER_CYCLE_SLEEP)
+            if not _is_rate_limit(exc):
                 raise
-            print(f"\n  [rate limit] waiting {delay:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
-            time.sleep(delay)
-            delay *= BACKOFF_MULTIPLIER
+            wait = _parse_retry_after(exc)
+            if attempt == max_retries:
+                raise
+            print(f"\n  [rate limit] waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
+            time.sleep(wait)
+        except RateLimitError as exc:
+            wait = _parse_retry_after(exc)
+            if attempt == max_retries:
+                raise
+            print(f"\n  [rate limit] waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
+            time.sleep(wait)

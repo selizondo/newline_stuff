@@ -154,27 +154,7 @@ def main(argv=None) -> int:
     from llm_utils.config import get_settings
     llm_model = args.model or get_settings().generation_model
 
-    import re as _re
     import time as _time
-    import llm_utils.client as _llm_client
-    from openai import RateLimitError
-
-    # Disable llm_utils' 240s inter-cycle sleep so our outer retry handles pacing.
-    _llm_client.INTER_CYCLE_SLEEP = 0.0
-
-    def _generate_with_backoff(query, retrieval_results, model, max_tokens):
-        for attempt in range(6):
-            try:
-                return generate_answer(query, retrieval_results, model=model,
-                                       max_tokens=max_tokens, max_retries=0)
-            except RateLimitError as e:
-                wait = 65
-                m = _re.search(r"try again in ([\d.]+)s", str(e))
-                if m:
-                    wait = int(float(m.group(1))) + 5
-                console.print(f"  [yellow]rate limit — waiting {wait}s… (attempt {attempt+1}/6)[/]")
-                _time.sleep(wait)
-        raise RuntimeError("rate limit retries exhausted")
 
     qa_pairs = []
     for i, (qid, entry) in enumerate(queries, 1):
@@ -183,7 +163,8 @@ def main(argv=None) -> int:
         with console.status("  retrieving…"):
             retrieval_results = pipeline.query(query, top_k=args.top_k)
         with console.status("  generating…"):
-            qa = _generate_with_backoff(query, retrieval_results, llm_model, args.max_tokens)
+            qa = generate_answer(query, retrieval_results, model=llm_model,
+                                 max_tokens=args.max_tokens)
         qa_pairs.append(qa)
         if i < len(queries):
             _time.sleep(args.delay)
@@ -236,7 +217,7 @@ def main(argv=None) -> int:
             **{k: best.metrics[k] for k in ("mrr", "ndcg@5", "recall@5") if k in best.metrics},
             "avg_judge_score": avg_overall,
         },
-        config=best.config,
+        config={**best.config, "llm_model": llm_model},
         log_path=args.log,
     )
     console.print(f"  [green]✓[/] Logged to {args.log}")

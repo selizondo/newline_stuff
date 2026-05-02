@@ -22,13 +22,11 @@ from llm_utils.client import (
     DEFAULT_TEMPERATURE,
     DEFAULT_MAX_TOKENS,
     DEFAULT_MAX_RETRIES,
-    DEFAULT_BACKOFF_DELAY,
-    BACKOFF_MULTIPLIER,
-    INTER_CYCLE_SLEEP,
     INSTRUCTOR_INTERNAL_RETRIES,
     _gen_delay,
     _judge_delay,
     _is_rate_limit,
+    _parse_retry_after,
 )
 from llm_utils.config import get_settings
 from observability import record_llm_generation
@@ -58,7 +56,6 @@ def instructor_complete(
 ) -> T:
     """Structured generation with observability. Retries on 429."""
     client = get_instructor_client()
-    delay = DEFAULT_BACKOFF_DELAY
     _t0 = time.monotonic()
     for attempt in range(max_retries + 1):
         try:
@@ -81,37 +78,32 @@ def instructor_complete(
             time.sleep(_gen_delay())
             return result
         except InstructorRetryException as exc:
-            if _is_rate_limit(exc):
-                if attempt == max_retries:
-                    print(f"\n  [rate limit] retries exhausted — sleeping {INTER_CYCLE_SLEEP:.0f}s", flush=True)
-                    time.sleep(INTER_CYCLE_SLEEP)
-                    raise
-                print(f"\n  [rate limit] waiting {delay:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
-                time.sleep(delay)
-                delay *= BACKOFF_MULTIPLIER
-                continue
-            _errors = exc.errors() if callable(getattr(exc, "errors", None)) else getattr(exc, "errors", None)
-            print(f"\n  [validation failed] {exc.n_attempts} attempt(s), model={model}")
-            print(f"  errors: {_errors}")
-            record_llm_generation(
-                obs_context=obs_context,
-                name="phase1.instructor_complete",
-                model=model,
-                input_messages=messages,
-                output=None,
-                duration_ms=(time.monotonic() - _t0) * 1000,
-                error=exc,
-                extra_attributes={"validation_attempts": exc.n_attempts},
-            )
-            raise
-        except RateLimitError:
-            if attempt == max_retries:
-                print(f"\n  [rate limit] retries exhausted — sleeping {INTER_CYCLE_SLEEP:.0f}s", flush=True)
-                time.sleep(INTER_CYCLE_SLEEP)
+            if not _is_rate_limit(exc):
+                _errors = exc.errors() if callable(getattr(exc, "errors", None)) else getattr(exc, "errors", None)
+                print(f"\n  [validation failed] {exc.n_attempts} attempt(s), model={model}")
+                print(f"  errors: {_errors}")
+                record_llm_generation(
+                    obs_context=obs_context,
+                    name="phase1.instructor_complete",
+                    model=model,
+                    input_messages=messages,
+                    output=None,
+                    duration_ms=(time.monotonic() - _t0) * 1000,
+                    error=exc,
+                    extra_attributes={"validation_attempts": exc.n_attempts},
+                )
                 raise
-            print(f"\n  [rate limit] waiting {delay:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
-            time.sleep(delay)
-            delay *= BACKOFF_MULTIPLIER
+            wait = _parse_retry_after(exc)
+            if attempt == max_retries:
+                raise
+            print(f"\n  [rate limit] waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
+            time.sleep(wait)
+        except RateLimitError as exc:
+            wait = _parse_retry_after(exc)
+            if attempt == max_retries:
+                raise
+            print(f"\n  [rate limit] waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
+            time.sleep(wait)
 
 
 def chat_complete(
@@ -125,7 +117,6 @@ def chat_complete(
     """Chat completion with rate-limit backoff. Routes to judge endpoint when flagged."""
     client = get_judge_client() if use_judge_client else get_client()
     rate_delay = _judge_delay() if use_judge_client else _gen_delay()
-    delay = DEFAULT_BACKOFF_DELAY
     for attempt in range(max_retries + 1):
         try:
             response = client.chat.completions.create(
@@ -136,14 +127,12 @@ def chat_complete(
             )
             time.sleep(rate_delay)
             return response.choices[0].message.content or ""
-        except RateLimitError:
+        except RateLimitError as exc:
+            wait = _parse_retry_after(exc)
             if attempt == max_retries:
-                print(f"\n  [rate limit] retries exhausted — sleeping {INTER_CYCLE_SLEEP:.0f}s", flush=True)
-                time.sleep(INTER_CYCLE_SLEEP)
                 raise
-            print(f"\n  [rate limit] waiting {delay:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
-            time.sleep(delay)
-            delay *= BACKOFF_MULTIPLIER
+            print(f"\n  [rate limit] waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
+            time.sleep(wait)
 
 
 def judge_binary(
@@ -198,7 +187,6 @@ def judge_batch(
         {"role": "system", "content": _JUDGE_BATCH_SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
     ]
-    delay = DEFAULT_BACKOFF_DELAY
     _t0 = time.monotonic()
     _gen_name = f"phase{obs_context.get('phase', '?')}.judge_batch" if obs_context else "judge_batch"
     for attempt in range(max_retries + 1):
@@ -222,30 +210,25 @@ def judge_batch(
             time.sleep(_judge_delay())
             return result
         except InstructorRetryException as exc:
-            if _is_rate_limit(exc):
-                if attempt == max_retries:
-                    print(f"\n  [rate limit] retries exhausted — sleeping {INTER_CYCLE_SLEEP:.0f}s", flush=True)
-                    time.sleep(INTER_CYCLE_SLEEP)
-                    raise
-                print(f"\n  [rate limit] waiting {delay:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
-                time.sleep(delay)
-                delay *= BACKOFF_MULTIPLIER
-                continue
-            record_llm_generation(
-                obs_context=obs_context,
-                name=_gen_name,
-                model=model,
-                input_messages=messages,
-                output=None,
-                duration_ms=(time.monotonic() - _t0) * 1000,
-                error=exc,
-            )
-            raise
-        except RateLimitError:
-            if attempt == max_retries:
-                print(f"\n  [rate limit] retries exhausted — sleeping {INTER_CYCLE_SLEEP:.0f}s", flush=True)
-                time.sleep(INTER_CYCLE_SLEEP)
+            if not _is_rate_limit(exc):
+                record_llm_generation(
+                    obs_context=obs_context,
+                    name=_gen_name,
+                    model=model,
+                    input_messages=messages,
+                    output=None,
+                    duration_ms=(time.monotonic() - _t0) * 1000,
+                    error=exc,
+                )
                 raise
-            print(f"\n  [rate limit] waiting {delay:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
-            time.sleep(delay)
-            delay *= BACKOFF_MULTIPLIER
+            wait = _parse_retry_after(exc)
+            if attempt == max_retries:
+                raise
+            print(f"\n  [rate limit] waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
+            time.sleep(wait)
+        except RateLimitError as exc:
+            wait = _parse_retry_after(exc)
+            if attempt == max_retries:
+                raise
+            print(f"\n  [rate limit] waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})...", end="", flush=True)
+            time.sleep(wait)

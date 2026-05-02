@@ -98,6 +98,7 @@ def generate_answer(
     return QAResponse(
         query=query,
         answer=answer,
+        model=model,
         citations=citations,
         chunks_used=[c.model_dump(exclude={"embedding"}) for c in chunks],
         generation_time_s=round(gen_time, 4),

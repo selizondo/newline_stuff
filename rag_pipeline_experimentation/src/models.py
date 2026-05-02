@@ -33,6 +33,7 @@ class Citation(BaseModel):
 class QAResponse(BaseModel):
     query: str
     answer: str
+    model: str = ""
     citations: list[Citation] = Field(default_factory=list)
     chunks_used: list[dict] = Field(default_factory=list)
     retrieval_time_s: float = 0.0
@@ -68,6 +69,7 @@ class ExperimentResult(BaseModel):
     config: dict                          # serialised ExperimentConfig
     metrics: dict[str, float]             # recall@5, precision@5, mrr, ndcg@5
     generation_metrics: dict[str, float] = Field(default_factory=dict)  # avg judge dims
+    llm_model: str = ""                   # model used for answer generation + judging
     query_results: list[QueryResult] = Field(default_factory=list)
     avg_latency_s: float = 0.0
     n_queries: int = 0
